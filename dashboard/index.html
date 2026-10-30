@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SafeGate — Fail-Closed AI Upload Gateway</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- Chart.js via CDN allowed by CSP -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <!-- Top Navigation Bar -->
+  <header class="navbar">
+    <div class="nav-brand">
+      <span class="brand-shield">🛡️</span>
+      <div>
+        <h1 class="brand-title">SafeGate</h1>
+        <p class="brand-sub">Fail-Closed AI Screening Gateway</p>
+      </div>
+    </div>
+    <div class="nav-auth">
+      <div class="key-input-group">
+        <label for="adminKeyInput">Admin API Key:</label>
+        <input type="password" id="adminKeyInput" placeholder="Enter ADMIN_API_KEY..." value="dev-admin-key-change-in-production-12345">
+      </div>
+      <div class="key-input-group">
+        <label for="clientKeyInput">Client API Key:</label>
+        <input type="password" id="clientKeyInput" placeholder="Enter CLIENT_API_KEY..." value="dev-client-key-change-in-production-98765">
+      </div>
+      <button id="saveKeysBtn" class="btn btn-outline" title="Save keys to browser session">Save Keys</button>
+      <span class="status-badge status-live">● System Active</span>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Telemetry Cards Row -->
+    <section class="stats-grid">
+      <div class="card stat-card">
+        <div class="stat-title">Total Scanned</div>
+        <div class="stat-value" id="statTotal">0</div>
+        <div class="stat-desc">All-time processed media</div>
+      </div>
+      <div class="card stat-card stat-allow">
+        <div class="stat-title">Allowed</div>
+        <div class="stat-value" id="statAllowed">0</div>
+        <div class="stat-desc">Clean &amp; Published</div>
+      </div>
+      <div class="card stat-card stat-review">
+        <div class="stat-title">In Review</div>
+        <div class="stat-value" id="statReview">0</div>
+        <div class="stat-desc">Awaiting human moderation</div>
+      </div>
+      <div class="card stat-card stat-block">
+        <div class="stat-title">Blocked</div>
+        <div class="stat-value" id="statBlocked">0</div>
+        <div class="stat-desc">Destroyed &amp; Blocklisted</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-title">Avg Scan Time</div>
+        <div class="stat-value" id="statAvgTime">0.0s</div>
+        <div class="stat-desc">Pipeline latency per video</div>
+      </div>
+    </section>
+
+    <!-- Navigation Tabs -->
+    <nav class="tabs-nav">
+      <button class="tab-btn active" data-tab="tab-upload">Live Upload Screening</button>
+      <button class="tab-btn" data-tab="tab-review">Review Queue <span class="badge" id="reviewQueueCount">0</span></button>
+      <button class="tab-btn" data-tab="tab-decisions">Decision Records</button>
+      <button class="tab-btn" data-tab="tab-appeals">Appeals <span class="badge" id="appealsCount">0</span></button>
+      <button class="tab-btn" data-tab="tab-audit">Audit Log &amp; Telemetry</button>
+    </nav>
+
+    <!-- Tab 1: Live Upload Screening -->
+    <section id="tab-upload" class="tab-content active">
+      <div class="grid-2col">
+        <!-- Upload Box -->
+        <div class="card">
+          <h2>Video Screening Intake</h2>
+          <p class="subtitle">Fail-closed ingestion pipeline. Magic-byte verification, perceptual hash deduplication, local NSFW vision model, and synthetic manipulation screening.</p>
+          
+          <div id="dropZone" class="drop-zone">
+            <input type="file" id="fileInput" accept=".mp4,.mov,.avi,.mkv,.webm" class="file-input">
+            <div class="drop-prompt">
+              <span class="upload-icon">📁</span>
+              <p><strong>Drag &amp; drop a video file here</strong>, or click to browse</p>
+              <span class="file-hints">Supported: MP4, MOV, AVI, MKV, WEBM (Max 200 MB)</span>
+            </div>
+            <div id="fileSelectedInfo" class="file-info hidden"></div>
+          </div>
+
+          <div class="action-row">
+            <button id="uploadBtn" class="btn btn-primary" disabled>Screen Video</button>
+            <button id="clearBtn" class="btn btn-secondary">Clear</button>
+          </div>
+
+          <div id="uploadProgress" class="progress-bar-container hidden">
+            <div class="progress-bar-fill" id="progressBarFill"></div>
+            <span class="progress-text" id="progressText">Uploading and screening through all 8 stages...</span>
+          </div>
+        </div>
+
+        <!-- Live Verdict Display -->
+        <div class="card">
+          <h2>Pipeline Live Verdict</h2>
+          <div id="verdictPlaceholder" class="placeholder-box">
+            <p>Upload a video to view real-time verdict and stage-by-stage screening evidence.</p>
+          </div>
+
+          <div id="verdictResult" class="verdict-box hidden">
+            <div class="verdict-header">
+              <span id="verdictBadge" class="verdict-badge">VERDICT</span>
+              <span id="verdictDuration" class="verdict-time">0.00s</span>
+            </div>
+            
+            <div class="verdict-body">
+              <div class="info-row">
+                <strong>Upload ID:</strong>
+                <span id="verdictUploadId" class="mono"></span>
+              </div>
+              <div class="info-row">
+                <strong>Explanation:</strong>
+                <p id="verdictExplanation" class="explanation-text"></p>
+              </div>
+              <div class="metric-grid">
+                <div class="metric-box">
+                  <div class="metric-label">Worst NSFW Score</div>
+                  <div class="metric-val" id="verdictNsfw">-</div>
+                </div>
+                <div class="metric-box">
+                  <div class="metric-label">Deepfake Risk</div>
+                  <div class="metric-val" id="verdictDeepfake">-</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="verdict-actions" id="verdictActions">
+              <button id="appealFromVerdictBtn" class="btn btn-outline">Appeal Verdict</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab 2: Review Queue -->
+    <section id="tab-review" class="tab-content">
+      <div class="card">
+        <div class="section-header">
+          <div>
+            <h2>Human-in-the-Loop Review Queue</h2>
+            <p class="subtitle">Videos placed in quarantine review due to borderline scores, high deepfake probability, or stage anomalies. Explicit media is never rendered.</p>
+          </div>
+          <button id="refreshReviewBtn" class="btn btn-outline">Refresh Queue</button>
+        </div>
+
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Original Name</th>
+                <th>Size</th>
+                <th>NSFW Peak</th>
+                <th>Deepfake Risk</th>
+                <th>Reason</th>
+                <th>Received</th>
+                <th>Moderator Actions</th>
+              </tr>
+            </thead>
+            <tbody id="reviewTableBody">
+              <tr><td colspan="8" class="text-center">Loading review queue...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab 3: Decision Records -->
+    <section id="tab-decisions" class="tab-content">
+      <div class="card">
+        <div class="section-header">
+          <div>
+            <h2>Screening Decision Log</h2>
+            <p class="subtitle">Complete historical record of all media evaluated by the SafeGate pipeline.</p>
+          </div>
+          <div class="filter-group">
+            <label for="verdictFilter">Filter by Verdict:</label>
+            <select id="verdictFilter" class="select-input">
+              <option value="">All Verdicts</option>
+              <option value="ALLOW">ALLOW</option>
+              <option value="REVIEW">REVIEW</option>
+              <option value="BLOCK">BLOCK</option>
+            </select>
+            <button id="refreshDecisionsBtn" class="btn btn-outline">Refresh</button>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Original Name</th>
+                <th>Size</th>
+                <th>Verdict</th>
+                <th>Explanation</th>
+                <th>NSFW Score</th>
+                <th>Deepfake Score</th>
+                <th>Latency</th>
+                <th>Timestamp</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="decisionsTableBody">
+              <tr><td colspan="10" class="text-center">Loading decision records...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab 4: Appeals -->
+    <section id="tab-appeals" class="tab-content">
+      <div class="card">
+        <div class="section-header">
+          <div>
+            <h2>User Appeals</h2>
+            <p class="subtitle">Requests submitted by users or content owners disputing an automated screening verdict.</p>
+          </div>
+          <div class="filter-group">
+            <select id="appealFilter" class="select-input">
+              <option value="">All Statuses</option>
+              <option value="pending" selected>Pending</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+            </select>
+            <button id="refreshAppealsBtn" class="btn btn-outline">Refresh</button>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Appeal ID</th>
+                <th>Upload ID</th>
+                <th>Reason</th>
+                <th>Status</th>
+                <th>Moderator Note</th>
+                <th>Submitted</th>
+                <th>Resolution</th>
+              </tr>
+            </thead>
+            <tbody id="appealsTableBody">
+              <tr><td colspan="7" class="text-center">Loading appeals...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab 5: Audit Log & Telemetry -->
+    <section id="tab-audit" class="tab-content">
+      <div class="grid-2col">
+        <!-- Cryptographic Audit Chain Verification Card -->
+        <div class="card">
+          <h2>Cryptographic Audit Chain Integrity</h2>
+          <p class="subtitle">Every administrative action and screening decision is linked via SHA-256 hash chaining: <code>row_hash = SHA256(prev_hash + data)</code>.</p>
+          
+          <div class="audit-verify-box">
+            <button id="verifyAuditBtn" class="btn btn-primary">Verify Audit Chain Integrity</button>
+            <div id="auditVerifyStatus" class="audit-status-badge hidden">Chain Unchecked</div>
+          </div>
+
+          <div id="auditDetails" class="audit-details-box hidden">
+            <div class="info-row">
+              <strong>Verification Result:</strong>
+              <span id="auditResultText" class="bold"></span>
+            </div>
+            <div class="info-row">
+              <strong>Total Sequential Records:</strong>
+              <span id="auditTotalEntries" class="mono"></span>
+            </div>
+            <div class="info-row">
+              <strong>Breakage Point:</strong>
+              <span id="auditBrokenAt" class="mono">None</span>
+            </div>
+            <div class="info-row">
+              <strong>Integrity Message:</strong>
+              <p id="auditMessage" class="explanation-text"></p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Telemetry Chart -->
+        <div class="card">
+          <h2>Screening Verdicts Timeline</h2>
+          <p class="subtitle">Daily volume of ALLOW, REVIEW, and BLOCK decisions.</p>
+          <div class="chart-wrapper">
+            <canvas id="verdictTimelineChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Submit Appeal Modal -->
+  <div id="appealModal" class="modal hidden">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>Submit Appeal</h3>
+        <button id="closeAppealModalBtn" class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="appealUploadIdInput">Upload ID:</label>
+          <input type="text" id="appealUploadIdInput" class="form-control mono" readonly>
+        </div>
+        <div class="form-group">
+          <label for="appealReasonInput">Reason for Appeal (min 10 characters):</label>
+          <textarea id="appealReasonInput" class="form-control" rows="4" placeholder="Explain why this decision should be reviewed..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="submitAppealBtn" class="btn btn-primary">Submit Appeal</button>
+        <button id="cancelAppealBtn" class="btn btn-secondary">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Resolve Appeal Modal -->
+  <div id="resolveModal" class="modal hidden">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="resolveModalTitle">Resolve Appeal</h3>
+        <button id="closeResolveModalBtn" class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="resolveAppealPrompt"></p>
+        <div class="form-group">
+          <label for="resolveNoteInput">Moderator Rationale:</label>
+          <input type="text" id="resolveNoteInput" class="form-control" placeholder="Enter resolution justification...">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="confirmResolveBtn" class="btn btn-primary">Confirm</button>
+        <button id="cancelResolveBtn" class="btn btn-secondary">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <p>SafeGate — Self-Hosted Fail-Closed AI Upload Gateway &bull; Defensive Architecture Mini Project</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

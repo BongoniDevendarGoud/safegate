@@ -1,0 +1,51 @@
+# === SafeGate .gitignore ===
+
+# Secrets & Environment
+.env
+*.pem
+*.key
+*.token
+
+# Python Virtual Environments & Bytecode
+venv/
+.venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+
+# Media Uploads & Pipelines (Never commit untrusted user uploads)
+quarantine/
+review/
+published/
+
+# Database Files
+*.db
+*.sqlite
+*.sqlite3
+
+# Test & Coverage Artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs & Temporary Files
+*.log
+*.tmp
+temp/
+model_cache/
+
+# Large Rendered Demo Video Outputs (Can be generated locally)
+*.mp4
+!samples/*.mp4
+demo_shot_*.jpg
+demo_preview.png
+
+# IDE & Operating System Caches
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

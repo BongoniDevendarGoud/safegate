@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  safegate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: safegate-gateway
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - HOST=0.0.0.0
+      - CLIENT_API_KEY=${CLIENT_API_KEY:-dev-client-key-change-in-production-98765}
+      - ADMIN_API_KEY=${ADMIN_API_KEY:-dev-admin-key-change-in-production-12345}
+      - USE_GEMINI=${USE_GEMINI:-false}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
+      - DASHBOARD_ORIGIN=${DASHBOARD_ORIGIN:-http://localhost:8000}
+    volumes:
+      # Persistent storage volumes for media lifecycle and SQLite database
+      - safegate_data:/app
+      - ./quarantine:/app/quarantine
+      - ./review:/app/review
+      - ./published:/app/published
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    security_opt:
+      - no-new-privileges:true
+    read_only: false
+    cap_drop:
+      - ALL
+
+volumes:
+  safegate_data:
+    driver: local

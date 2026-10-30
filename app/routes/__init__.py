@@ -1,0 +1,3 @@
+"""
+SafeGate API Routes Package
+"""
