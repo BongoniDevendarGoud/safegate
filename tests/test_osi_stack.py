@@ -40,9 +40,26 @@ def db_session():
 
 @pytest.fixture
 def sample_video_path():
-    p = Path(__file__).resolve().parent.parent / "sample_clean.mp4"
-    assert p.exists(), "sample_clean.mp4 must exist for OSI tests"
-    return p
+    repo_root = Path(__file__).resolve().parent.parent
+    candidates = [
+        repo_root / "samples" / "sample_clean.mp4",
+        repo_root / "sample_clean.mp4",
+    ]
+    for path in candidates:
+        if path.exists():
+            return path
+
+    generator = repo_root / "generate_test_samples.py"
+    if generator.exists():
+        import subprocess
+        import sys
+
+        subprocess.run([sys.executable, str(generator)], check=True)
+        for path in candidates:
+            if path.exists():
+                return path
+
+    pytest.fail("sample_clean.mp4 must exist for OSI tests")
 
 
 # -----------------------------------------------------------------------------

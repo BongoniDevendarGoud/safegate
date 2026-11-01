@@ -36,6 +36,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Generate Test Samples
+        run: |
+          python generate_test_samples.py
+
       - name: Run SafeGate 60-Test Automated Suite
         env:
           SAFEGATE_MOCK_MODEL: "true"
