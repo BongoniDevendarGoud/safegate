@@ -16,14 +16,21 @@ from app.config import settings
 
 def configure_cors(app) -> None:
     """
-    Registers strict CORSMiddleware on the FastAPI application instance.
+    Registers CORSMiddleware on the FastAPI application instance.
     """
-    allowed_origins = [settings.DASHBOARD_ORIGIN]
-
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=allowed_origins,
-        allow_credentials=True,
-        allow_methods=["GET", "POST", "OPTIONS"],
-        allow_headers=["X-API-Key", "Content-Type", "Authorization"],
-    )
+    if settings.DASHBOARD_ORIGIN == "*":
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=["*"],
+            allow_credentials=False,
+            allow_methods=["GET", "POST", "OPTIONS"],
+            allow_headers=["*"],
+        )
+    else:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=[settings.DASHBOARD_ORIGIN],
+            allow_credentials=True,
+            allow_methods=["GET", "POST", "OPTIONS"],
+            allow_headers=["X-API-Key", "Content-Type", "Authorization"],
+        )

@@ -1,0 +1,33 @@
+# ==============================================================================
+# SafeGate — Render.com Blueprint Deployment Specification
+# ==============================================================================
+# Deploy for free on Render:
+# 1. Sign in to https://dashboard.render.com
+# 2. Click "New +" -> "Blueprint" (or "Web Service")
+# 3. Connect https://github.com/BongoniDevendarGoud/safegate
+# 4. Render will build and deploy automatically!
+# ==============================================================================
+
+services:
+  - type: web
+    name: safegate
+    runtime: python
+    plan: free
+    region: oregon
+    buildCommand: pip install -r requirements.txt && python generate_test_samples.py
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: HOST
+        value: 0.0.0.0
+      - key: SAFEGATE_MOCK_MODEL
+        value: "true"
+      - key: USE_GEMINI
+        value: "false"
+      - key: CLIENT_API_KEY
+        value: dev-client-key-change-in-production-98765
+      - key: ADMIN_API_KEY
+        value: dev-admin-key-change-in-production-12345
+      - key: DASHBOARD_ORIGIN
+        value: "*"
