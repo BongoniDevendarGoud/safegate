@@ -19,6 +19,10 @@ class UploadResponse(BaseModel):
     scan_duration_sec: Optional[float] = Field(None, description="Total screening pipeline runtime in seconds")
     nsfw_worst_score: Optional[float] = Field(None, description="Highest NSFW confidence score encountered (0.0 - 1.0)")
     deepfake_risk_score: Optional[int] = Field(None, description="Composite deepfake risk score (0 - 100)")
+    total_frames_extracted: Optional[int] = Field(None, description="Total frames extracted at 24fps")
+    legitimate_frames_count: Optional[int] = Field(None, description="Total frames marked legitimate (red mark)")
+    modified_frames_count: Optional[int] = Field(None, description="Total frames marked modified")
+    frames: Optional[List[Dict[str, Any]]] = Field(None, description="List of 24 frames per second with legitimate red markings")
 
     model_config = ConfigDict(from_attributes=True)
 

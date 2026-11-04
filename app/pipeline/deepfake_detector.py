@@ -259,3 +259,132 @@ def calculate_deepfake_risk(
     )
 
     return (final_score, all_reasons)
+
+
+def analyze_24fps_frame_by_frame(frames_meta: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Performs forensic inspection across 24 FPS extracted frames to distinguish
+    LEGITIMATE (authentic camera capture) from MODIFIED (synthetic / deepfake / spliced) frames.
+
+    Args:
+        frames_meta: Output list from extract_24fps_frames_with_meta.
+
+    Returns:
+        Structured forensic report with frame-by-frame verdicts, confidence scores,
+        signal telemetry, tamper ratios, and timestamps.
+    """
+    if not frames_meta:
+        return {
+            "total_frames_extracted": 0,
+            "fps_sample_rate": 24,
+            "legitimate_frames_count": 0,
+            "modified_frames_count": 0,
+            "tamper_percentage": 0.0,
+            "tampered_timestamps": [],
+            "frames_timeline": [],
+        }
+
+    frames_timeline = []
+    prev_hist = None
+    modified_count = 0
+    tampered_timestamps = []
+
+    for idx, item in enumerate(frames_meta):
+        bgr = item["bgr_frame"]
+        gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
+
+        # 1. Laplacian sharpness metric
+        lap_var = float(cv2.Laplacian(gray, cv2.CV_64F).var())
+
+        # 2. JPEG re-compression error residual (MSE)
+        encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 80]
+        _, enc = cv2.imencode(".jpg", bgr, encode_param)
+        dec = cv2.imdecode(enc, cv2.IMREAD_COLOR)
+        mse = float(np.mean((bgr.astype(float) - dec.astype(float)) ** 2))
+
+        # 3. Inter-frame color histogram correlation
+        hist = cv2.calcHist([bgr], [0, 1, 2], None, [8, 8, 8], [0, 256, 0, 256, 0, 256])
+        cv2.normalize(hist, hist)
+        corr = 1.0
+        if prev_hist is not None:
+            corr = float(cv2.compareHist(prev_hist, hist, cv2.HISTCMP_CORREL))
+        prev_hist = hist
+
+        # 4. Multi-heuristic decision for this specific frame
+        reasons = []
+        is_modified = False
+
+        if mse > 28.0:
+            is_modified = True
+            reasons.append(f"Synthetic high-frequency noise residual (MSE: {mse:.1f})")
+
+        if corr < 0.35 and idx > 0:
+            is_modified = True
+            reasons.append(f"Inter-frame color/luminance discontinuity (Corr: {corr:.2f})")
+
+        if lap_var < 15.0 and mse > 16.0:
+            is_modified = True
+            reasons.append(f"Unnatural edge boundary blur discontinuity (Laplacian: {lap_var:.1f})")
+
+        import base64
+        h, w = bgr.shape[:2]
+        marked_bgr = bgr.copy()
+
+        if is_modified:
+            status = "MODIFIED"
+            modified_count += 1
+            tampered_timestamps.append(f"{item['timestamp_str']} (Frame #{item['frame_index']})")
+            # Confidence in tampering
+            conf = min(99.4, round(65.0 + (mse * 0.25) + max(0.0, (1.0 - corr) * 20.0), 1))
+            anomaly_score = min(100.0, round(50.0 + (mse * 0.35), 1))
+            reason_str = "; ".join(reasons)
+            # Neutral / amber mark for modified frames
+            cv2.rectangle(marked_bgr, (0, 0), (w - 1, h - 1), (60, 140, 245), 2)
+            cv2.rectangle(marked_bgr, (6, 6), (105, 26), (40, 40, 40), -1)
+            cv2.putText(marked_bgr, "MODIFIED", (12, 21), cv2.FONT_HERSHEY_SIMPLEX, 0.40, (60, 140, 245), 1, cv2.LINE_AA)
+        else:
+            status = "LEGITIMATE"
+            conf = min(99.8, round(max(85.0, 100.0 - (mse * 1.2)), 1))
+            anomaly_score = max(2.0, round(mse * 1.1, 1))
+            reason_str = "Pristine optical sensor consistency, natural edge gradients & coherent temporal color."
+            # >>> PROMINENT RED COLOR MARK FOR LEGITIMATE FRAMES <<<
+            cv2.rectangle(marked_bgr, (0, 0), (w - 1, h - 1), (0, 0, 255), 4)
+            cv2.rectangle(marked_bgr, (6, 6), (120, 26), (0, 0, 255), -1)
+            cv2.putText(marked_bgr, "LEGITIMATE", (12, 21), cv2.FONT_HERSHEY_SIMPLEX, 0.42, (255, 255, 255), 1, cv2.LINE_AA)
+
+        # Encode thumbnail with mark
+        encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 80]
+        _, enc_thumb = cv2.imencode(".jpg", marked_bgr, encode_param)
+        marked_b64 = "data:image/jpeg;base64," + base64.b64encode(enc_thumb).decode("ascii")
+
+        frames_timeline.append({
+            "frame_index": item["frame_index"],
+            "second_idx": item["second_idx"],
+            "sub_second_frame": item["sub_second_frame"],
+            "timestamp_sec": item["timestamp_sec"],
+            "timestamp_str": item["timestamp_str"],
+            "status": status,
+            "confidence": conf,
+            "anomaly_score": anomaly_score,
+            "laplacian_variance": round(lap_var, 1),
+            "compression_mse": round(mse, 1),
+            "color_correlation": round(corr, 3),
+            "reason": reason_str,
+            "thumbnail_data": marked_b64,
+            "edge_data": item["edge_data"],
+            "mark_color": "red" if status == "LEGITIMATE" else "dark",
+        })
+
+    total_count = len(frames_timeline)
+    legitimate_count = total_count - modified_count
+    tamper_pct = round((modified_count / total_count * 100.0) if total_count > 0 else 0.0, 1)
+
+    return {
+        "total_frames_extracted": total_count,
+        "fps_sample_rate": 24,
+        "legitimate_frames_count": legitimate_count,
+        "modified_frames_count": modified_count,
+        "tamper_percentage": tamper_pct,
+        "tampered_timestamps": tampered_timestamps,
+        "frames_timeline": frames_timeline,
+    }

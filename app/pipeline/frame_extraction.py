@@ -133,3 +133,98 @@ def extract_video_frames(
 
     finally:
         cap.release()
+
+
+def extract_24fps_frames_with_meta(
+    video_path: Path,
+    max_seconds: int = 4,
+    max_frames: int = 96,
+    thumbnail_dims: Tuple[int, int] = (240, 180),
+) -> List[Dict[str, Any]]:
+    """
+    Extracts high-resolution 24 FPS temporal frames with rich metadata and base64 thumbnails.
+    Extracts exactly 24 frames per second across video duration (bounded to max_seconds).
+    
+    Args:
+        video_path: Path to target video file.
+        max_seconds: Maximum seconds of video to process at 24fps (default: 4 seconds = 96 frames max).
+        max_frames: Upper bound cap on extracted frames.
+        thumbnail_dims: (width, height) for frontend thumbnail rendering.
+        
+    Returns:
+        List of dicts containing frame indices, timestamps, numpy BGR frames, PIL Images, and base64 thumbnails.
+    """
+    import base64
+
+    str_path = str(video_path.resolve())
+    cap = cv2.VideoCapture(str_path)
+    if not cap.isOpened():
+        raise ValueError(f"Unable to open video stream: '{video_path.name}'")
+
+    try:
+        fps = cap.get(cv2.CAP_PROP_FPS) or 24.0
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        if fps <= 0 or total_frames <= 0:
+            raise ValueError(f"Invalid video container metadata: fps={fps}, total_frames={total_frames}")
+
+        duration_sec = total_frames / fps
+        process_seconds = max(1, min(int(np.ceil(duration_sec)), max_seconds))
+
+        results = []
+        global_idx = 1
+
+        for sec in range(process_seconds):
+            for sub_idx in range(24):
+                if len(results) >= max_frames:
+                    break
+
+                target_time = sec + (sub_idx / 24.0)
+                if target_time > duration_sec and results:
+                    break
+
+                target_frame_num = int(round(target_time * fps))
+                if target_frame_num >= total_frames:
+                    target_frame_num = max(0, total_frames - 1)
+
+                cap.set(cv2.CAP_PROP_POS_FRAMES, target_frame_num)
+                ret, bgr_frame = cap.read()
+                if not ret or bgr_frame is None:
+                    continue
+
+                # Generate lightweight thumbnail
+                thumb = cv2.resize(bgr_frame, thumbnail_dims, interpolation=cv2.INTER_AREA)
+                encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 75]
+                _, enc_bytes = cv2.imencode(".jpg", thumb, encode_param)
+                b64_str = "data:image/jpeg;base64," + base64.b64encode(enc_bytes).decode("ascii")
+
+                # Edge gradient visualization preview
+                gray_thumb = cv2.cvtColor(thumb, cv2.COLOR_BGR2GRAY)
+                lap_edge = cv2.Laplacian(gray_thumb, cv2.CV_8U)
+                lap_color = cv2.applyColorMap(lap_edge, cv2.COLORMAP_JET)
+                _, edge_bytes = cv2.imencode(".jpg", lap_color, encode_param)
+                edge_b64_str = "data:image/jpeg;base64," + base64.b64encode(edge_bytes).decode("ascii")
+
+                rgb_frame = cv2.cvtColor(thumb, cv2.COLOR_BGR2RGB)
+                pil_img = Image.fromarray(rgb_frame)
+
+                m, s_frac = divmod(target_time, 60)
+                ts_str = f"{int(m):02d}:{s_frac:05.2f}"
+
+                results.append({
+                    "frame_index": global_idx,
+                    "second_idx": sec,
+                    "sub_second_frame": sub_idx + 1,
+                    "timestamp_sec": round(target_time, 3),
+                    "timestamp_str": ts_str,
+                    "bgr_frame": thumb,
+                    "pil_image": pil_img,
+                    "thumbnail_data": b64_str,
+                    "edge_data": edge_b64_str,
+                })
+                global_idx += 1
+
+        logger.info("24 FPS Extraction SUCCESS: Generated %d frames for %s", len(results), video_path.name)
+        return results
+
+    finally:
+        cap.release()

@@ -93,6 +93,16 @@ async def upload_video(
             db=db,
         )
 
+        # Extract 24 FPS frames per second and mark legitimate vs modified
+        forensic_res = {}
+        try:
+            from app.pipeline.frame_extraction import extract_24fps_frames_with_meta
+            from app.pipeline.deepfake_detector import analyze_24fps_frame_by_frame
+            frames_meta = extract_24fps_frames_with_meta(file_path, max_seconds=2)
+            forensic_res = analyze_24fps_frame_by_frame(frames_meta)
+        except Exception as e:
+            logger.warning("24 FPS extraction notice: %s", e)
+
         # Run full screening pipeline (Stages 2 through 8)
         processed_record = run_pipeline(
             upload_id=upload_record.id,
@@ -121,6 +131,10 @@ async def upload_video(
             scan_duration_sec=processed_record.scan_duration_sec,
             nsfw_worst_score=processed_record.nsfw_worst_score,
             deepfake_risk_score=processed_record.deepfake_risk_score,
+            total_frames_extracted=forensic_res.get("total_frames_extracted"),
+            legitimate_frames_count=forensic_res.get("legitimate_frames_count"),
+            modified_frames_count=forensic_res.get("modified_frames_count"),
+            frames=forensic_res.get("frames_timeline"),
         )
 
     except ValueError as val_err:
