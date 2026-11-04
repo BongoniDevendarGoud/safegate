@@ -1,7 +1,8 @@
 @echo off
-title SafeGate Sentinel 24 FPS Web Gateway
+title SafeGate 2.0 AI Video Upload Firewall
 echo =====================================================================
-echo    SafeGate Sentinel -- Launching 24 FPS Web Gateway
+echo    SafeGate 2.0 -- AI-Powered Video Upload Firewall
+echo    Frame-Level Deepfake Detection ^& Website Security Gateway
 echo =====================================================================
 echo.
 cd /d "%~dp0"
