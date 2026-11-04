@@ -21,6 +21,11 @@ build/
 quarantine/
 review/
 published/
+frames/
+reports/
+!frames/.gitkeep
+!reports/.gitkeep
+
 
 # Database Files
 *.db

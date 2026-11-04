@@ -1,5 +1,5 @@
 # ==============================================================================
-# SafeGate — Multi-Stage Production Dockerfile
+# SafeGate 2.0 — Multi-Stage Production Dockerfile
 # ==============================================================================
 # Hardened container image adhering to CIS Docker benchmark guidelines:
 # 1. Non-root user execution (least privilege).
@@ -47,13 +47,15 @@ WORKDIR /app
 # Copy installed Python packages from builder stage
 COPY --from=builder /install /usr/local
 
-# Copy application source code, dashboard, and configuration
+# Copy application source code, dashboard, samples, and configuration
 COPY app/ ./app/
 COPY dashboard/ ./dashboard/
+COPY samples/ ./samples/
+COPY generate_demonstration_videos.py .
 COPY .env.example ./.env
 
 # Create persistent storage directories with proper ownership
-RUN mkdir -p quarantine review published && \
+RUN mkdir -p quarantine review published frames reports && \
     chown -R safegate:safegate /app
 
 # Enforce secure environment defaults

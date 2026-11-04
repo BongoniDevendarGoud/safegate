@@ -24,6 +24,8 @@ services:
       - ./quarantine:/app/quarantine
       - ./review:/app/review
       - ./published:/app/published
+      - ./frames:/app/frames
+      - ./reports:/app/reports
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/health"]
       interval: 30s

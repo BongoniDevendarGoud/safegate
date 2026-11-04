@@ -1,267 +1,296 @@
-# SafeGate — Self-Hosted 7-Layer OSI Video Security & Deepfake Screening Gateway
+# SafeGate 2.0 — AI-Powered Website Video Upload Firewall & Frame-Level Deepfake Detection System
 
 [![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.14-blue.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-009688.svg)](https://fastapi.tiangolo.com/)
-[![OSI Model](https://img.shields.io/badge/Architecture-7--Layer%20OSI%20Stack-orange.svg)]()
-[![Tests](https://img.shields.io/badge/Tests-60%20Passed%20(100%25)-brightgreen.svg)]()
-[![Security](https://img.shields.io/badge/Design-Fail--Closed%20%26%20Tamper--Resistant-critical.svg)]()
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.0%2B-EE4C2C.svg)](https://pytorch.org/)
+[![OpenCV](https://img.shields.io/badge/OpenCV-FFmpeg%20Decoded-5C3EE8.svg)](https://opencv.org/)
+[![Tests](https://img.shields.io/badge/Tests-74%20Passed%20(100%25)-brightgreen.svg)]()
+[![Security](https://img.shields.io/badge/Architecture-Fail--Closed%20%7C%20Zero--Trust-critical.svg)]()
 [![Docker](https://img.shields.io/badge/Docker-Multi--Stage%20Hardened-blue.svg)](Dockerfile)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-SafeGate is a self-hosted, **fail-closed AI security screening gateway and CLI appliance** that inspects video uploads for prohibited explicit content and synthetic deepfake manipulation **before** media is published.
+**SafeGate 2.0** is an enterprise-grade cybersecurity video upload firewall and frame-level deepfake detection system. Designed to sit directly between public uploaders and website publishing backends (e.g. YouTube, TikTok, or Instagram clones), SafeGate intercepts every incoming video, buffers it into isolated quarantine, extracts **every single decoded frame** without downsampling, and runs neural AI and forensic analysis before making an authoritative **ALLOW**, **QUARANTINE**, or **BLOCK** determination.
 
-Engineered with a **7-Layer OSI Protocol Stack**, SafeGate enforces strict defense-in-depth across the physical bitstream, temporal frame link, transport integrity, perceptual hashes, and cognitive AI vision models.
-
----
-
-## Key Features
-
-- **7-Layer OSI Protocol Stack:** Every incoming video is screened sequentially from Layer 1 (Physical Bitstream Ingestion) through Layer 7 (Cognitive AI Policy Gate).
-- **Synthetic Deepfake Detection:** Multi-signal forensic heuristics evaluate temporal sharpness variance (CoV), consecutive color histogram discontinuity, compression residuals (MSE), and container metadata.
-- **Fail-Closed Architecture:** Network timeouts, corrupted frames, missing API credentials, or ambiguous classifications always route media to `REVIEW` or `BLOCK`—never failing open to `ALLOW`.
-- **Zero Retention of Blocked Media:** Prohibited files are destroyed immediately from disk upon detection. Only non-reversible cryptographic checksums (SHA-256) and perceptual fingerprints (pHash) are retained.
-- **Tamper-Evident SHA-256 Audit Trail:** Every decision, administrative action, and appeal is cryptographically chained using HMAC SHA-256 into an immutable sequential ledger.
-- **Unified Interfaces:** Operates both as a high-speed Command-Line Interface (`cli.py`) and a headless REST API with a responsive web moderation dashboard (`dashboard/`).
-- **Offline & Cloud Hybrid:** Fully operational offline out of the box using local models (`Falconsai/nsfw_image_detection`), with optional Google Gemini 2.5 Flash second-opinion review for borderline cases.
+> [!IMPORTANT]
+> **Strict Zero-Trust Publishing Rule:** A video is **never** published to the public website feed until it has fully cleared SafeGate's frame-by-frame verification. Quarantined or rejected videos are strictly inaccessible to public users.
 
 ---
 
-## 60-Second Quickstart
+## 1. System Architecture
+
+```text
+       USER UPLOADS VIDEO
+               |
+               v
+  DEMO VIDEO-SHARING WEBSITE (SafeTube)
+               |
+               v [INTERCEPTED]
+    SAFEGATE UPLOAD FIREWALL
+               |
+               v
+  STAGE 1: FILE VALIDATION & SECURE BUFFERING (Magic Bytes, Non-Executable Quarantine)
+               |
+               v
+  STAGE 2: VIDEO METADATA EXTRACTION (Duration, Container, FPS, Dimensions)
+               |
+               v
+  STAGE 3: COMPLETE FRAME EXTRACTION (FFmpeg / OpenCV, Every Decoded Frame, SHA-256)
+               |
+               v
+  STAGE 4: FRAME-BY-FRAME AI & FORENSIC DETECTION (PyTorch CNN + Forensic Engine)
+               |
+               v
+  STAGE 5: FRAME COLOR CLASSIFICATION (RED = Legit, GREEN = Suspicious, YELLOW = Uncertain)
+               |
+               v
+  STAGE 6: VIDEO RISK ASSESSMENT (Composite Risk Scoring 0 - 100)
+               |
+               v
+  STAGE 7: FIREWALL POLICY DECISION ENGINE
+               |
+      +--------+-----------------------+
+      |                                |                               |
+      v                                v                               v
+    ALLOW                          QUARANTINE                        BLOCK
+(All Frames RED)              (>=1 GREEN / YELLOW)             (Corrupted / Prohibited)
+      |                                |                               |
+      v                                v                               v
+PUBLISH TO WEBSITE               SOC ADMIN REVIEW                REJECT & PURGE
+```
+
+---
+
+## 2. Complete Frame Extraction Engine
+
+Unlike superficial tools that only sample 1 or 2 frames per second, **SafeGate 2.0 decodes and extracts every individual frame** using OpenCV and FFmpeg:
+
+- **100% Extraction Guarantee:** A 60-second video at 30 FPS yields **exactly 1,800 decoded frames**. For a 10-minute video, all 18,000 frames are processed sequentially in stream batches.
+- **Cryptographic Fingerprinting:** Every extracted frame is hashed with **SHA-256** and stamped with its exact index and millisecond timestamp (`HH:MM:SS.mmm`).
+- **Progress Tracking & Accounting:** Telemetry continuously tracks total expected frames, successfully extracted frames, classified frames, and failed frames.
+- **Fail-Closed Integrity:** If decoding aborts or frames cannot be classified, the video is **never allowed** and routes immediately to `QUARANTINE` or `BLOCK`.
+
+---
+
+## 3. Modular AI & Forensic Detection Engine
+
+SafeGate 2.0 combines deep neural networks with physical optical heuristics to detect AI manipulation:
+
+1. **PyTorch Deepfake Classifier:** Convolutional frequency-domain neural model analyzing spatial high-frequency artifacts, GAN grid patterns, and neural blending seams.
+2. **Compression Residual Error (MSE):** Measures double-compression error residuals to identify face-swapping splice boundaries.
+3. **Laplacian Edge Sharpness:** Evaluates focus consistency and natural optical camera dispersion across frames.
+4. **Temporal Color Correlation:** Tracks inter-frame histogram coherence to catch sudden deepfake frame flicker or illumination jumps.
+5. **Fail-Closed Fallback:** If an AI model becomes unavailable or encounters an unhandled inference exception, SafeGate records the failure and forces a **QUARANTINE** verdict.
+
+---
+
+## 4. Strict Frame Color Classification System
+
+SafeGate 2.0 employs a strict, user-specified color convention:
+
+| Classification | Visual Marker | Hex Code | Meaning & System Response |
+| :--- | :---: | :---: | :--- |
+| **LEGITIMATE** | 🔴 **RED** | `#ef4444` | **Authentic frame.** Captured naturally by physical CMOS optical sensor. Natural noise and color coherence. |
+| **SUSPICIOUS / AI** | 🟢 **GREEN** | `#22c55e` | **AI-Manipulated / Deepfake.** Neural synthesis artifacts, face-swapping anomalies, or splice boundaries detected. |
+| **UNCERTAIN** | 🟡 **YELLOW** | `#eab308` | **Ambiguous / Inconclusive.** Low Laplacian variance, extreme underexposure, or model inference uncertainty. |
+
+> [!WARNING]
+> **Intentional Inversion:** SafeGate's RED (Legitimate) and GREEN (Suspicious) convention is intentionally distinct from conventional consumer dashboards by design. Do not alter this mapping.
+
+---
+
+## 5. Interactive Web Application
+
+The frontend dashboard provides 7 dedicated security views:
+
+1. **Demo Video-Sharing Platform ("SafeTube"):** Real-world platform simulation (similar to YouTube/Instagram). Displays only videos that have cleared the firewall with an `ALLOW` decision. Quarantined media remains hidden.
+2. **Video Upload & Intercept:** Dropzone interface allowing users to upload MP4, MOV, AVI, or WebM media with real-time video stream preview and pre-flight metadata extraction.
+3. **Real-Time Firewall Scanner:** Live visualization of the 8-stage pipeline, real-time extraction progress bar, SSE event telemetry, and policy determination.
+4. **Interactive Frame Inspection Gallery:** Grid view of all extracted frames with filter chips (`All`, `🔴 Legitimate`, `🟢 Suspicious / AI`, `🟡 Uncertain`). Clicking any card opens the deep frame inspection modal with high-res display and adjacent frame comparison.
+5. **Video Frame Timeline:** Interactive temporal scrubber mapping colored markers (RED, GREEN, YELLOW) across the entire video runtime. Automatically clusters consecutive suspicious frames into **Suspicious Segments** (e.g., `Frames 25–25 (00:00:01.041 - 00:00:01.083)`).
+6. **SOC Moderation Dashboard:** Security Operations Center console featuring Chart.js telemetry graphs, the active quarantine review queue, one-click manual `Approve` and `Reject` actions, and the tamper-evident SHA-256 audit ledger.
+7. **Video Security Report:** Formal cryptographic verification certificate including media fingerprints, frame breakdown, AI telemetry, and one-click JSON download or PDF export.
+
+---
+
+## 6. One-Click Demonstration Scenarios (Mentor Evaluation Guide)
+
+SafeGate 2.0 includes 5 real generated MP4 test videos located in `samples/` and a persistent top-bar scenario launcher (`scen-1` through `scen-6`) to demonstrate all required capabilities in seconds:
+
+### Scenario 1: Authentic Video Upload (Passes Firewall)
+- **Input:** `samples/scenario1_legitimate.mp4` (natural camera gradients and realistic kinematics).
+- **Execution:** Click button **`1 Authentic Video (ALLOW)`** or run `python cli.py scan samples/scenario1_legitimate.mp4`.
+- **Expected Outcome:**
+  - All 45 frames classified as **Legitimate** and marked **RED**.
+  - Risk Score: `0 / 100`.
+  - Firewall Decision: **ALLOW**.
+  - Public Feed: Video is immediately published and playable on the **Demo Video Platform**.
+
+### Scenario 2: Deepfake Video Upload (Intercepted & Quarantined)
+- **Input:** `samples/scenario2_deepfake.mp4` (synthetic high-frequency flicker and high JPEG residual error).
+- **Execution:** Click button **`2 Deepfake Video (QUARANTINE)`**.
+- **Expected Outcome:**
+  - Frames flagged as **Suspicious / AI-Manipulated** and marked **GREEN**.
+  - Risk Score: `>= 80 / 100`.
+  - Firewall Decision: **QUARANTINE**.
+  - Public Feed: Video is **blocked from publication**.
+  - SOC Dashboard: Added to the Quarantine Review Queue with review actions.
+
+### Scenario 3: Single-Frame Modification Detection (Temporal Discontinuity)
+- **Input:** `samples/scenario3_single_modified.mp4` (45-frame video where exactly **Frame #25** has injected synthetic artifacts, while all other 44 frames are pristine).
+- **Execution:** Click button **`3 Single-Frame Tamper (QUARANTINE)`**.
+- **Expected Outcome:**
+  - Exact frame identified: **Frame #25** at timestamp `00:00:01.042` marked **GREEN**.
+  - All 44 surrounding frames marked **RED**.
+  - Timeline: Identifies suspicious segment at Frame 25.
+  - Frame Gallery: Side-by-side comparison displays clean Frame #24 (RED) vs tampered Frame #25 (GREEN) vs clean Frame #26 (RED).
+  - Firewall Decision: **QUARANTINE**.
+
+### Scenario 4: Uncertain Frame Handling (Fail-Closed)
+- **Input:** `samples/scenario4_uncertain.mp4` (flat ambiguous low-contrast bitstream with low Laplacian variance).
+- **Execution:** Click button **`4 Uncertain Clarity (YELLOW)`**.
+- **Expected Outcome:**
+  - Frames marked **YELLOW** (Uncertain).
+  - Risk Score elevated to Moderate (`50 / 100`).
+  - Firewall Decision: **QUARANTINE** (demonstrating fail-closed zero-trust policy).
+
+### Scenario 5: Corrupted / Malformed Stream (Rejection & Blocking)
+- **Input:** `samples/scenario5_corrupted.mp4` (malformed bitstream with broken header/index).
+- **Execution:** Click button **`5 Corrupted Stream (BLOCK)`**.
+- **Expected Outcome:**
+  - Intake validator detects invalid container headers.
+  - Firewall Decision: **BLOCK**.
+  - File is rejected and immediately purged from disk.
+
+### Scenario 6: AI Model Failure (Fail-Closed Architecture)
+- **Input:** Programmatic simulation of neural inference exception.
+- **Execution:** Click button **`6 Model Failure (FAIL-CLOSED)`**.
+- **Expected Outcome:**
+  - Model status transitions to `INFERENCE_FAILURE`.
+  - Fail-closed rule triggers: SafeGate **refuses to fail open**.
+  - Firewall Decision: **QUARANTINE**.
+
+---
+
+## 7. Installation & Quickstart
 
 ### Prerequisites
-- Python 3.10+ (Tested up to Python 3.14)
-- Git
+- Python 3.10+ (Tested on Python 3.10, 3.11, 3.12, 3.14)
+- Git & FFmpeg
 
-### 1. Clone the Repository
+### Step 1: Clone Repository & Create Virtual Environment
 ```bash
-git clone https://github.com/<your-username>/safegate.git
+git clone https://github.com/BongoniDevendarGoud/safegate.git
 cd safegate
-```
 
-### 2. Automated One-Click Setup
-
-**On Windows:**
-```cmd
-setup.bat
-```
-
-**On Linux / macOS:**
-```bash
-chmod +x setup.sh run.sh
-./setup.sh
-```
-
-*(Alternatively, create a virtual environment manually:)*
-```bash
+# Windows
 python -m venv venv
-# Windows:
 venv\Scripts\activate
-# Linux/macOS:
+
+# Linux / macOS
+python3 -m venv venv
 source venv/bin/activate
+```
 
+### Step 2: Install Dependencies
+```bash
 pip install -r requirements.txt
-cp .env.example .env
-python generate_test_samples.py
 ```
+
+### Step 3: Generate Demonstration Test Samples
+```bash
+python generate_demonstration_videos.py
+```
+*Creates all 5 scenario video streams in `samples/`.*
+
+### Step 4: Start SafeGate 2.0 Web Platform
+```bash
+# Windows
+start_website.bat
+
+# Or direct command on any OS:
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+Open your browser at **`http://localhost:8000`**.
 
 ---
 
-## Running SafeGate
+## 8. Automated Test Suite
 
-### Quick Scans via CLI Appliance
+SafeGate 2.0 maintains a comprehensive automated testing suite covering all 7 OSI layers, AI frame extraction, and the 6 firewall scenarios:
 
-SafeGate includes pre-generated synthetic test samples in the `samples/` directory so you can test immediately:
-
-#### 1. Scan an Authentic / Normal Video
 ```bash
-python cli.py scan samples/sample_clean.mp4
+pytest -v
 ```
-**Output:**
+
+### Test Suite Execution Output
 ```text
-Initiating OSI Protocol Stack Analysis on: sample_clean.mp4
-Size: 55,215 bytes | Client IP: 127.0.0.1
+======================================= test session starts =======================================
+platform win32 -- Python 3.14.3, pytest-9.1.1, pluggy-1.6.0
+collected 74 items
 
-LAYER        SUBSYSTEM                        STATUS     LATENCY    DETAILS
--------------------------------------------------------------------------------------
-Layer 5      Session (Authentication)         PASS          0.0ms  Session authenticated.
-Layer 3      Network (Traffic Policing)       PASS          0.0ms  Traffic conforms to policy.
-Layer 1      Physical (Bitstream Ingestion)   PASS          0.5ms  Stream buffered safely.
-Layer 6      Presentation (Syntax Validation) PASS          1.4ms  MIME confirmed: video/mp4
-Layer 4      Transport (Integrity & Match)    PASS          7.5ms  SHA-256 clean.
-Layer 2      Data Link (Temporal Framing)     PASS         34.5ms  Extracted 3 synchronized frames.
-Layer 6      Presentation (pHash Dedup)       PASS        436.3ms  Blocklist clean.
-Layer 7      Application (Cognitive Policy)   ALLOW        60.1ms  NSFW: 0.02, Deepfake: 10/100 -> ALLOW
--------------------------------------------------------------------------------------
+tests/test_safegate2.py ...............                                                    [ 20%]
+tests/test_audit.py ......                                                                 [ 28%]
+tests/test_cli.py ......                                                                   [ 36%]
+tests/test_decision.py .........                                                           [ 48%]
+tests/test_hashing.py .....                                                                [ 55%]
+tests/test_intake.py ......                                                                [ 63%]
+tests/test_moderation.py .......                                                           [ 72%]
+tests/test_network.py ......                                                               [ 81%]
+tests/test_pipeline.py ........                                                            [ 91%]
+tests/test_presentation.py ......                                                          [100%]
 
->>> FINAL VERDICT: ALLOW (Published) <<<
-Deepfake Risk:   10/100 (Safe, Authentic Media)
-Action Taken:    Media cleared all security stages and transferred to /published/
+======================================= 74 passed in 7.82s =======================================
 ```
-
-#### 2. Scan a Synthetic Deepfake Video
-```bash
-python cli.py scan samples/sample_malicious_deepfake.mp4
-```
-**Output:**
-```text
-Initiating OSI Protocol Stack Analysis on: sample_malicious_deepfake.mp4
-Size: 1,187,899 bytes | Client IP: 127.0.0.1
-
-LAYER        SUBSYSTEM                        STATUS     LATENCY    DETAILS
--------------------------------------------------------------------------------------
-...
-Layer 7      Application (Cognitive Policy)   REVIEW       74.7ms  NSFW: 0.02, Deepfake: 75/100 -> REVIEW
--------------------------------------------------------------------------------------
-
->>> FINAL VERDICT: REVIEW (Quarantined) <<<
-Deepfake Risk:   75/100 (Exceeds review threshold of 60)
-Advisory Signals: Boundary sharpness variance (CoV: 0.71); Temporal color discontinuity (-0.05); Compression noise (MSE: 53.8); Missing camera hardware metadata.
-Action Taken:    Media routed to secure /quarantine/ vault for human moderator review.
-```
-
-#### 3. Verify Cryptographic Audit Chain Integrity
-```bash
-python cli.py audit
-```
-**Output:**
-```text
-Verifying Cryptographic SHA-256 Audit Hash Chain...
------------------------------------------------------------------
-✓ AUDIT INTEGRITY: VALID (Cryptographic Chain Intact)
-Total Sequential Records: 23
-Broken at Row ID:         None (Zero tampering detected)
-Verification Summary:     Audit chain verified: all entries cryptographically intact.
------------------------------------------------------------------
-```
-
-#### 4. Launch Headless Server Daemon & Web Dashboard
-```bash
-python cli.py serve
-```
-Open **[http://localhost:8000](http://localhost:8000)** in your browser to access the live web moderation dashboard.
 
 ---
 
-## 7-Layer OSI Protocol Stack Architecture
+## 9. REST API Reference
 
-```
-┌────────────────────────────────────────────────────────────────────────┐
-│                   7-LAYER OSI SECURITY STACK                           │
-├─────────┬───────────────────────────┬──────────────────────────────────┤
-│ Layer   │ Subsystem Name            │ Security Enforcement Mechanism   │
-├─────────┼───────────────────────────┼──────────────────────────────────┤
-│ Layer 7 │ Application Cognitive Gate│ Local ViT, Gemini AI, Deepfake   │
-│ Layer 6 │ Presentation Formatting   │ Magic bytes MIME & 64-bit pHash  │
-│ Layer 5 │ Session Authentication    │ HMAC constant-time auth & chain  │
-│ Layer 4 │ Transport Integrity       │ SHA-256 exact-match blocklist    │
-│ Layer 3 │ Network Traffic Policing  │ Sliding-window IP rate limiter   │
-│ Layer 2 │ Data Link Framing         │ OpenCV temporal frame sampling   │
-│ Layer 1 │ Physical Bitstream        │ Hard 200MB quota & chunk bounds  │
-└─────────┴───────────────────────────┴──────────────────────────────────┘
-```
-
-1. **Layer 1: Physical (Bitstream Ingestion):** Buffers the raw byte stream in isolated quarantine memory, strictly enforcing a 200MB hard quota before parsing.
-2. **Layer 2: Data Link (Temporal Framing):** Decodes video streams into synchronized temporal frames at bounded intervals ($1\text{ frame }/\, 2\text{s}$, capped at 60 frames max) preventing decompression bombs.
-3. **Layer 3: Network (Traffic Policing):** Sliding-window rate limiter restricting IP addresses to $\le 10\text{ uploads }/\, \text{min}$.
-4. **Layer 4: Transport (Integrity & Blocklist):** Computes cryptographic SHA-256 checksums in constant time. If the hash matches the known blocklist, processing halts in $<10\text{ms}$ with an immediate `BLOCK`.
-5. **Layer 5: Session (Cryptographic Identity):** Verifies API keys using constant-time comparisons (`hmac.compare_digest`) and logs events to an immutable SHA-256 hash chain.
-6. **Layer 6: Presentation (Syntax & pHash):** Validates MIME magic bytes (`video/mp4`, `video/webm`, `video/quicktime`) and computes 64-bit Discrete Cosine Transform perceptual hashes (pHash) to catch re-encoded duplicate media (Hamming distance $\le 10$).
-7. **Layer 7: Application (Cognitive Policy Gate):** Multi-model AI analysis:
-   - **Local Vision Transformer:** Offline explicit content classifier (`Falconsai/nsfw_image_detection`).
-   - **Cloud Second Opinion:** Google Gemini 2.5 Flash triggered strictly for borderline scores ($[0.45, 0.85)$).
-   - **Deepfake Forensic Scorer:** Evaluates subject boundary sharpness variance ($\text{CoV} \ge 0.70$), color histogram shifts ($\le 0.40$), and compression residual noise.
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `POST` | `/api/videos/upload` | Ingest video file, compute SHA-256, buffer into quarantine |
+| `POST` | `/api/videos/{id}/scan` | Execute 8-stage frame extraction, AI inference, and risk assessment |
+| `GET` | `/api/videos/{id}/status` | Retrieve scan status and frame statistics |
+| `GET` | `/api/videos/{id}/events` | Server-Sent Events (SSE) real-time scanning progress stream |
+| `GET` | `/api/videos/{id}/frames` | Paginated list of extracted frames with classifications and markers |
+| `GET` | `/api/videos/{id}/frames/{f_id}` | Full frame details with adjacent previous and next frame links |
+| `GET` | `/api/videos/{id}/frames/{f_id}/image` | High-resolution frame PNG/JPEG image |
+| `GET` | `/api/videos/{id}/frames/{f_id}/thumbnail` | Stamped thumbnail with color-coded classification badge |
+| `GET` | `/api/videos/{id}/timeline` | Colored timeline ticks and grouped suspicious segments |
+| `GET` | `/api/videos/{id}/report` | Cryptographic JSON security verification certificate |
+| `GET` | `/api/website/videos` | Public website media feed (only returns `ALLOW` / `published` videos) |
+| `GET` | `/api/website/videos/{id}/stream` | Public video streaming endpoint (gates quarantined videos) |
+| `GET` | `/api/admin/dashboard` | SOC dashboard metrics, decisions summary, and audit ledger |
+| `POST` | `/api/admin/videos/{id}/approve` | SOC administrator approval override (publishes video) |
+| `POST` | `/api/admin/videos/{id}/reject` | SOC administrator rejection (purges video) |
+| `POST` | `/api/demo/run-scenario/{id}` | Instant trigger for demonstration scenarios 1 through 6 |
 
 ---
 
-## Deepfake Detection Signals
+## 10. Docker Deployment
 
-SafeGate evaluates four independent forensic indicators to compute a composite manipulation probability ($0 - 100$):
-
-$$\text{Deepfake Risk} = w_1 \cdot S_{\text{sharpness}} + w_2 \cdot S_{\text{color}} + w_3 \cdot S_{\text{compression}} + w_4 \cdot S_{\text{metadata}}$$
-
-- **Signal 1: Temporal Sharpness Instability (CoV):** AI face-swaps and synthetic frame generators suffer from temporal jitter across subject boundaries. SafeGate measures the Coefficient of Variation ($\text{CoV} = \sigma / \mu$) of Laplacian variance across frames.
-- **Signal 2: Color Histogram Continuity:** Detects unnatural color shifts between consecutive frames using normalized Bhattacharyya/correlation distance.
-- **Signal 3: Compression Residuals (MSE):** Analyzes high-frequency residual differences between raw and re-quantized frames.
-- **Signal 4: Hardware EXIF & Container Tags:** Inspects the media container for natural camera manufacturer tags vs. synthetic rendering signatures.
-
-Any video scoring $\ge 60$ triggers an automatic **`REVIEW`** quarantine.
-
----
-
-## CLI Command Reference
-
-| Command | Description | Example |
-|---|---|---|
-| `scan <file>` | Runs file through all 7 OSI Layers | `python cli.py scan video.mp4` |
-| `audit` | Verifies cryptographic audit hash chain | `python cli.py audit` |
-| `stats` | Displays total counts (ALLOW, REVIEW, BLOCK) | `python cli.py stats` |
-| `blocklist` | Queries or adds hashes to transport blocklist | `python cli.py blocklist --add <sha256>` |
-| `serve` | Launches HTTP server on `http://0.0.0.0:8000` | `python cli.py serve` |
-
----
-
-## Docker Deployment
-
-SafeGate includes a hardened, multi-stage production `Dockerfile` running as a non-root user (`uid 10001`):
+Deploy SafeGate 2.0 as an isolated, non-root microservice using Docker:
 
 ```bash
 # Build and run with Docker Compose
-docker compose up --build
+docker-compose up --build -d
 
-# Run a test scan inside the container
-docker exec -it safegate-gateway python cli.py scan samples/sample_clean.mp4
+# Check health check
+docker-compose ps
 ```
 
 ---
 
-## Automated Test Suite
+## 11. Security Audit & Cryptographic Ledger
 
-SafeGate features a 60-test comprehensive test suite verifying all 7 layers, edge cases, fail-closed handlers, cryptographic tampering detection, and deepfake heuristics:
+SafeGate implements an immutable SHA-256 HMAC hash-chained audit ledger. Every upload, scan result, moderator determination, and automated decision writes a block to the database:
 
-```bash
-python -m pytest tests/ -v
-```
+$$\text{RowHash}_i = \text{SHA256}(\text{RowHash}_{i-1} \parallel \text{UploadID} \parallel \text{Action} \parallel \text{Timestamp})$$
 
-**Result:**
-```text
-======================== 60 passed, 1 warning in 3.47s ========================
-```
+Clicking **"Verify Hash Chain Integrity"** on the SOC Moderation Dashboard traverses the entire database to ensure zero tampering, deleted rows, or retroactively modified decisions.
 
 ---
 
-## Project Structure
-
-```
-safegate/
-├── app/
-│   ├── main.py                     # FastAPI server daemon & security middleware
-│   ├── config.py                   # Central configuration & policy thresholds
-│   ├── db.py                       # SQLAlchemy SQLite engine & session management
-│   ├── osi/                        # 7-Layer OSI Implementation
-│   │   ├── layer1_physical.py      # Layer 1: Bitstream buffer & 200MB quota
-│   │   ├── layer2_datalink.py      # Layer 2: Temporal video framing
-│   │   ├── layer3_network.py       # Layer 3: Sliding window IP rate limiter
-│   │   ├── layer4_transport.py     # Layer 4: SHA-256 integrity & blocklist
-│   │   ├── layer5_session.py       # Layer 5: Constant-time auth & hash chain
-│   │   ├── layer6_presentation.py  # Layer 6: MIME syntax & pHash deduplication
-│   │   ├── layer7_application.py   # Layer 7: AI Vision & Deepfake Heuristics
-│   │   └── stack.py                # OSI Protocol Stack Coordinator
-│   ├── models/database.py          # ORM models (Upload, AuditLog, Blocklists)
-│   ├── routes/                     # REST API endpoints
-│   └── security/                   # Security headers, CORS, rate limiting
-├── dashboard/                      # Single-page web moderation dashboard
-├── samples/                        # Authentic and deepfake test videos
-├── tests/                          # 60 automated unit and integration tests
-├── .env.example                    # Environment configuration template
-├── cli.py                          # Unified CLI appliance
-├── Dockerfile                      # Hardened container definition
-├── docker-compose.yml              # Multi-container orchestration
-├── setup.bat / setup.sh            # One-click environment setup
-└── run.bat / run.sh                # One-click interactive launcher
-```
-
----
-
-## License
+## 12. License
 
 This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.

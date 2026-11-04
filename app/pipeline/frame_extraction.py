@@ -228,3 +228,240 @@ def extract_24fps_frames_with_meta(
 
     finally:
         cap.release()
+
+
+def extract_all_video_frames(
+    video_path: Path,
+    upload_id: str,
+    ai_engine: Any = None,
+    max_frames: Optional[int] = None,
+    save_frames_to_disk: bool = True,
+    progress_callback: Optional[Any] = None,
+) -> Dict[str, Any]:
+    """
+    SafeGate 2.0 Complete Video Frame Extraction & Forensic Classification Engine.
+    
+    Extracts EVERY decoded visual frame from the video stream without dropping or skipping.
+    Applies the exact RED / GREEN / YELLOW color classification system to every frame.
+    Calculates SHA-256 hashes, stores frame files securely, and detects suspicious segments.
+    """
+    import hashlib
+    import base64
+    from app.pipeline.ai_engine import (
+        default_ai_engine,
+        CLASS_LEGITIMATE,
+        CLASS_SUSPICIOUS,
+        CLASS_UNCERTAIN,
+        COLOR_RED,
+        COLOR_GREEN,
+        COLOR_YELLOW,
+    )
+
+    if ai_engine is None:
+        ai_engine = default_ai_engine
+
+    str_path = str(video_path.resolve())
+    cap = cv2.VideoCapture(str_path)
+
+    if not cap.isOpened():
+        raise ValueError(f"Corrupted or unsupported media stream: unable to decode '{video_path.name}'")
+
+    try:
+        fps = float(cap.get(cv2.CAP_PROP_FPS) or 25.0)
+        total_expected_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH) or 0)
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT) or 0)
+
+        if fps <= 0 or (total_expected_frames <= 0 and max_frames is None):
+            raise ValueError(f"Invalid video stream headers: fps={fps}, total_frames={total_expected_frames}")
+
+        duration_sec = (total_expected_frames / fps) if fps > 0 and total_expected_frames > 0 else 0.0
+
+        # Frame storage directory
+        frames_dir = settings.frames_path / upload_id
+        if save_frames_to_disk:
+            frames_dir.mkdir(parents=True, exist_ok=True)
+
+        frames_results = []
+        timeline_markers = []
+        suspicious_timestamps = []
+        suspicious_frame_refs = []
+
+        decoded_count = 0
+        legitimate_count = 0
+        suspicious_count = 0
+        uncertain_count = 0
+        failed_count = 0
+
+        prev_hist = None
+        current_suspicious_run = []
+        suspicious_segments = []
+
+        while True:
+            ret, bgr_frame = cap.read()
+            if not ret or bgr_frame is None:
+                break
+
+            decoded_count += 1
+            frame_idx = decoded_count
+            timestamp_sec = round((frame_idx - 1) / fps, 4)
+
+            # Compute SHA-256 hash of this frame's raw image encoding
+            encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 95]
+            _, full_enc = cv2.imencode(".jpg", bgr_frame, encode_param)
+            frame_bytes = full_enc.tobytes()
+            frame_sha256 = hashlib.sha256(frame_bytes).hexdigest()
+
+            # Save full resolution frame image if enabled
+            frame_path_str = None
+            thumb_path_str = None
+            if save_frames_to_disk:
+                frame_file = frames_dir / f"frame_{frame_idx:06d}.jpg"
+                frame_file.write_bytes(frame_bytes)
+                frame_path_str = str(frame_file)
+
+            # Forensic & AI classification with RED/GREEN/YELLOW marking
+            frame_res = ai_engine.classify_frame(
+                frame_idx=frame_idx,
+                timestamp_sec=timestamp_sec,
+                bgr_frame=bgr_frame,
+                prev_hist=prev_hist,
+                thumbnail_dims=(320, 240),
+            )
+            frame_res.sha256_hash = frame_sha256
+            frame_res.frame_path = frame_path_str
+
+            # Save stamped thumbnail to disk if enabled
+            if save_frames_to_disk and frame_res.thumbnail_data:
+                thumb_file = frames_dir / f"thumb_{frame_idx:06d}.jpg"
+                try:
+                    # Strip data URL prefix
+                    b64_content = frame_res.thumbnail_data.split(",", 1)[1]
+                    thumb_file.write_bytes(base64.b64decode(b64_content))
+                    thumb_path_str = str(thumb_file)
+                    frame_res.thumbnail_path = thumb_path_str
+                except Exception:
+                    pass
+
+            # Update counters
+            if frame_res.classification == CLASS_SUSPICIOUS:
+                suspicious_count += 1
+                suspicious_timestamps.append(frame_res.timestamp_str)
+                suspicious_frame_refs.append({
+                    "frame_index": frame_idx,
+                    "timestamp": frame_res.timestamp_str,
+                    "evidence": frame_res.detection_evidence,
+                    "anomaly_score": frame_res.anomaly_score,
+                })
+                current_suspicious_run.append(frame_res)
+            elif frame_res.classification == CLASS_UNCERTAIN:
+                uncertain_count += 1
+                if current_suspicious_run:
+                    _finalize_suspicious_segment(current_suspicious_run, suspicious_segments)
+                    current_suspicious_run = []
+            else:
+                legitimate_count += 1
+                if current_suspicious_run:
+                    _finalize_suspicious_segment(current_suspicious_run, suspicious_segments)
+                    current_suspicious_run = []
+
+            # Timeline marker
+            timeline_markers.append({
+                "frame_index": frame_idx,
+                "timestamp_sec": timestamp_sec,
+                "timestamp_str": frame_res.timestamp_str,
+                "classification": frame_res.classification,
+                "color": frame_res.color_marker,
+                "anomaly_score": frame_res.anomaly_score,
+            })
+
+            frames_results.append(frame_res)
+
+            # Update temporal history for next frame comparison
+            prev_hist = ai_engine.forensic_engine.compute_color_histogram(bgr_frame)
+
+            # Progress callback every 10 frames
+            if progress_callback and (decoded_count % 10 == 0 or (total_expected_frames and decoded_count == total_expected_frames)):
+                pct = round((decoded_count / max(1, total_expected_frames)) * 100.0, 1) if total_expected_frames else 50.0
+                progress_callback({
+                    "stage": "frame_classification",
+                    "progress_percent": min(99.0, pct),
+                    "total_frames": total_expected_frames,
+                    "extracted_frames": decoded_count,
+                    "classified_frames": decoded_count,
+                    "legitimate_frames": legitimate_count,
+                    "suspicious_frames": suspicious_count,
+                    "uncertain_frames": uncertain_count,
+                })
+
+            if max_frames and decoded_count >= max_frames:
+                break
+
+        # Finalize any trailing suspicious segment
+        if current_suspicious_run:
+            _finalize_suspicious_segment(current_suspicious_run, suspicious_segments)
+
+        if decoded_count == 0:
+            raise ValueError(f"Fail-closed: No readable visual frames could be decoded from '{video_path.name}'")
+
+        # Calculate overall video risk score (0 - 100)
+        # Any suspicious frame escalates risk score immediately!
+        if suspicious_count > 0:
+            pct_suspicious = (suspicious_count / decoded_count) * 100.0
+            peak_anomaly = max((f.anomaly_score for f in frames_results if f.classification == CLASS_SUSPICIOUS), default=75.0)
+            risk_score = min(100, max(65, int(50.0 + (pct_suspicious * 1.5) + (peak_anomaly * 0.3))))
+        elif uncertain_count > 0:
+            risk_score = min(58, max(42, int(35.0 + (uncertain_count / decoded_count * 30.0))))
+        else:
+            avg_anomaly = sum(f.anomaly_score for f in frames_results) / decoded_count if decoded_count else 5.0
+            risk_score = min(20, max(2, int(avg_anomaly)))
+
+        logger.info(
+            "Complete Frame Extraction SUCCESS: %d frames (legit=%d, susp=%d, uncertain=%d, risk=%d) for %s",
+            decoded_count, legitimate_count, suspicious_count, uncertain_count, risk_score, video_path.name
+        )
+
+        return {
+            "total_frames_decoded": decoded_count,
+            "total_expected_frames": total_expected_frames or decoded_count,
+            "fps": fps,
+            "width": width,
+            "height": height,
+            "duration_sec": round(duration_sec or (decoded_count / fps), 3),
+            "legitimate_frames_count": legitimate_count,
+            "suspicious_frames_count": suspicious_count,
+            "uncertain_frames_count": uncertain_count,
+            "failed_frames_count": failed_count,
+            "risk_score": risk_score,
+            "frames": frames_results,
+            "timeline_markers": timeline_markers,
+            "suspicious_segments": suspicious_segments,
+            "suspicious_timestamps": suspicious_timestamps,
+            "suspicious_frame_references": suspicious_frame_refs,
+        }
+
+    finally:
+        cap.release()
+
+
+def _finalize_suspicious_segment(run_frames: List[Any], out_segments: List[Dict[str, Any]]):
+    """Aggregates a contiguous run of suspicious frames into a segment."""
+    if not run_frames:
+        return
+    first = run_frames[0]
+    last = run_frames[-1]
+    peak_anom = max(f.anomaly_score for f in run_frames)
+    reasons = list({f.detection_evidence for f in run_frames if f.detection_evidence})
+
+    out_segments.append({
+        "segment_id": len(out_segments) + 1,
+        "start_frame": first.frame_index,
+        "end_frame": last.frame_index,
+        "start_time": first.timestamp_str,
+        "end_time": last.timestamp_str,
+        "frame_count": len(run_frames),
+        "classification": "SUSPICIOUS",
+        "color": "GREEN",
+        "peak_anomaly": round(peak_anom, 1),
+        "reasons": reasons[:3],
+    })

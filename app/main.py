@@ -24,6 +24,7 @@ from app.security.rate_limit import limiter, rate_limit_exceeded_handler
 from app.routes.upload import router as upload_router
 from app.routes.audit import router as audit_router
 from app.routes.dashboard import router as dashboard_router
+from app.routes.videos import router as video_router
 
 # Configure structured application logging
 logging.basicConfig(
@@ -45,6 +46,8 @@ async def lifespan(app: FastAPI):
     settings.quarantine_path.mkdir(parents=True, exist_ok=True)
     settings.review_path.mkdir(parents=True, exist_ok=True)
     settings.published_path.mkdir(parents=True, exist_ok=True)
+    settings.frames_path.mkdir(parents=True, exist_ok=True)
+    settings.reports_path.mkdir(parents=True, exist_ok=True)
 
     # Initialize SQLite database schema
     init_db()
@@ -54,9 +57,9 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="SafeGate",
-    description="A self-hosted, fail-closed AI upload gateway screening media for explicit content and synthetic manipulation.",
-    version="0.1.0",
+    title="SafeGate 2.0",
+    description="AI-Powered Website Video Upload Firewall & Frame-Level Deepfake Detection System.",
+    version="2.0.0",
     lifespan=lifespan,
 )
 
@@ -87,6 +90,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 app.include_router(upload_router)
 app.include_router(audit_router)
 app.include_router(dashboard_router)
+app.include_router(video_router)
 
 
 @app.get("/health", summary="Health Check", tags=["system"])

@@ -140,6 +140,12 @@ class Settings:
     PUBLISHED_DIR: str = field(
         default_factory=lambda: os.getenv("PUBLISHED_DIR", "published")
     )
+    FRAMES_DIR: str = field(
+        default_factory=lambda: os.getenv("FRAMES_DIR", "frames")
+    )
+    REPORTS_DIR: str = field(
+        default_factory=lambda: os.getenv("REPORTS_DIR", "reports")
+    )
     DATABASE_URL: str = field(
         default_factory=lambda: os.getenv("DATABASE_URL", "sqlite:///safegate.db")
     )
@@ -183,6 +189,16 @@ class Settings:
     def published_path(self) -> Path:
         """Resolved filesystem path for published directory."""
         return Path(self.PUBLISHED_DIR).resolve()
+
+    @property
+    def frames_path(self) -> Path:
+        """Resolved filesystem path for extracted frames storage directory."""
+        return Path(self.FRAMES_DIR).resolve()
+
+    @property
+    def reports_path(self) -> Path:
+        """Resolved filesystem path for generated security reports directory."""
+        return Path(self.REPORTS_DIR).resolve()
 
 
 # Singleton settings instance accessible across all modules
