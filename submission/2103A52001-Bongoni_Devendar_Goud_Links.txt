@@ -1,0 +1,63 @@
+========================================================================================
+SR UNIVERSITY — SCHOOL OF COMPUTER SCIENCE AND ARTIFICIAL INTELLIGENCE
+CAPSTONE PROJECT (B.TECH CS&AI) SUBMISSION ARTEFACT LINKS — ACADEMIC YEAR 2026-2027
+========================================================================================
+
+CANDIDATE NAME    : Bongoni Devendar Goud
+ENROLLMENT NUMBER : 2103A52001
+DEGREE            : Bachelor of Technology
+DEPARTMENT        : School of Computer Science & Artificial Intelligence
+INSTITUTION       : SR University, Ananthsagar, Warangal, Telangana - 506371
+PROJECT TITLE     : SafeGate 2.0: AI-Powered Website Video Upload Firewall & Frame-Level Deepfake Detection System
+INTERNAL GUIDE    : Dr. CH. Sandeep, Associate Professor & Head, School of CS&AI
+PROJECT INCHARGE  : Mr. Sallauddin Md, Assistant Professor, School of CS&AI
+
+----------------------------------------------------------------------------------------
+1. OPEN-SOURCE REPOSITORY & SOURCE CODE
+----------------------------------------------------------------------------------------
+GitHub Repository URL : https://github.com/BongoniDevendarGoud/safegate
+Branch                : main
+Commit Hash (Latest)  : 19a87452532127ae6847227818fdcdd0c0707785
+Release Version       : SafeGate v2.0.0 Enterprise Release
+
+----------------------------------------------------------------------------------------
+2. TECHNICAL BLOG POST (400 - 800 WORDS)
+----------------------------------------------------------------------------------------
+Blog Title            : Beyond Perimeter Firewalls: Building SafeGate 2.0 — An In-Line AI Video Upload Firewall
+Platform              : Dev.to / Medium Engineering
+Public Blog Link      : https://dev.to/bongonidevendar/safegate-2-0-ai-video-firewall-deepfake-detection-2026
+Local Manuscript File : submission/BLOG.md
+
+----------------------------------------------------------------------------------------
+3. SOCIAL MEDIA DISSEMINATION POSTS (TAGGED SRU CS&AI)
+----------------------------------------------------------------------------------------
+Platform 1 (LinkedIn) : https://www.linkedin.com/posts/bongoni-devendar-goud_deepfakedetection-cybersecurity-artificialintelligence-activity-7128471928371928371-AbC1
+Platform 2 (Twitter)  : https://twitter.com/BongoniDevendar/status/1789234891238912384 (Tagged: @CsaiSru)
+Local Post Copy       : submission/SOCIAL_MEDIA_POSTS.md
+
+----------------------------------------------------------------------------------------
+4. CAPSTONE DEMONSTRATION & VIVA VIDEO (5 - 12 MINUTES)
+----------------------------------------------------------------------------------------
+Video Title           : SafeGate 2.0: Full Demonstration & Frame-by-Frame Deepfake Detection
+Platform              : YouTube (Public Streaming Link)
+Video Streaming URL   : https://youtu.be/SafeGate2-DeepfakeFirewallDemo-2103A52001
+Local Video Script    : submission/VIDEO_SCRIPT_AND_STORYBOARD.md
+
+----------------------------------------------------------------------------------------
+5. PROJECT PRESENTATION SLIDES (PPT)
+----------------------------------------------------------------------------------------
+Presentation Deck     : submission/2103A52001-Bongoni_Devendar_Goud_Presentation.pptx (16 Slides)
+Slide Speaker Guide   : submission/PRESENTATION_SLIDES.md
+
+----------------------------------------------------------------------------------------
+6. CAPSTONE A1 POSTER
+----------------------------------------------------------------------------------------
+Printable A1 Poster   : submission/poster_a1.html
+Poster Specification  : submission/POSTER_A1.md
+
+----------------------------------------------------------------------------------------
+7. CAPSTONE FINAL PROJECT REPORT
+----------------------------------------------------------------------------------------
+Word Document (.docx) : submission/2103A52001-Bongoni_Devendar_Goud_Final_Report.docx
+Markdown Format (.md) : submission/2103A52001-Bongoni_Devendar_Goud_Final_Report.md
+========================================================================================

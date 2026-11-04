@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SafeGate 2.0 — Capstone A1 Project Poster</title>
+  <style>
+    @page {
+      size: A1 portrait; /* 594mm x 841mm */
+      margin: 0;
+    }
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      width: 594mm;
+      height: 841mm;
+      background-color: #070b14;
+      color: #f1f5f9;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      padding: 16mm;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    
+    /* Header Area */
+    .poster-header {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      border: 3px solid #38bdf8;
+      border-radius: 12mm;
+      padding: 12mm 16mm;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+    }
+    .header-text {
+      flex: 1;
+    }
+    .univ-tag {
+      font-size: 11pt;
+      font-weight: 700;
+      color: #38bdf8;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 4mm;
+    }
+    .project-title {
+      font-size: 28pt;
+      font-weight: 900;
+      color: #ffffff;
+      line-height: 1.15;
+      margin-bottom: 3mm;
+    }
+    .project-subtitle {
+      font-size: 16pt;
+      font-weight: 500;
+      color: #94a3b8;
+      margin-bottom: 5mm;
+    }
+    .author-meta {
+      font-size: 13pt;
+      color: #cbd5e1;
+      display: flex;
+      gap: 12mm;
+      flex-wrap: wrap;
+    }
+    .author-meta strong {
+      color: #38bdf8;
+    }
+    .header-logo-box {
+      margin-left: 12mm;
+      background: #ffffff;
+      padding: 8mm 12mm;
+      border-radius: 8mm;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+    }
+    .sru-logo-text {
+      font-size: 26pt;
+      font-weight: 900;
+      color: #1e3a8a;
+      letter-spacing: 1px;
+    }
+    .sru-sub-text {
+      font-size: 10pt;
+      font-weight: 700;
+      color: #1e3a8a;
+      letter-spacing: 3px;
+    }
+
+    /* 3-Column Grid Layout */
+    .poster-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10mm;
+      flex: 1;
+      margin-top: 10mm;
+      margin-bottom: 8mm;
+    }
+    .poster-col {
+      display: flex;
+      flex-direction: column;
+      gap: 8mm;
+    }
+    .card {
+      background: #0f172a;
+      border: 2px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8mm;
+      padding: 8mm 10mm;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    .card-title {
+      font-size: 15pt;
+      font-weight: 800;
+      color: #38bdf8;
+      border-bottom: 2px solid rgba(56, 189, 248, 0.3);
+      padding-bottom: 3mm;
+      margin-bottom: 5mm;
+      display: flex;
+      align-items: center;
+      gap: 3mm;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .card-content {
+      font-size: 10.5pt;
+      color: #cbd5e1;
+      line-height: 1.5;
+    }
+    .card-content p {
+      margin-bottom: 4mm;
+      text-align: justify;
+    }
+    .card-content ul {
+      margin-left: 6mm;
+      margin-bottom: 4mm;
+    }
+    .card-content li {
+      margin-bottom: 2.5mm;
+    }
+
+    /* Diagrams & Highlights */
+    .arch-flow-box {
+      background: #090d16;
+      border: 1px solid #334155;
+      border-radius: 5mm;
+      padding: 5mm;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 8.5pt;
+      color: #38bdf8;
+      line-height: 1.4;
+      margin-bottom: 4mm;
+    }
+    .color-box-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 3.5mm;
+      margin-top: 2mm;
+    }
+    .color-pill {
+      border-radius: 4mm;
+      padding: 3.5mm 5mm;
+      font-size: 9.5pt;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 3mm;
+    }
+    .pill-red {
+      background: rgba(239, 68, 68, 0.15);
+      border: 2px solid #ef4444;
+      color: #f87171;
+    }
+    .pill-green {
+      background: rgba(34, 197, 94, 0.15);
+      border: 2px solid #22c55e;
+      color: #4ade80;
+    }
+    .pill-yellow {
+      background: rgba(234, 179, 8, 0.15);
+      border: 2px solid #eab308;
+      color: #fde047;
+    }
+
+    /* Benchmark Table */
+    .scen-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 8.5pt;
+      margin-top: 3mm;
+    }
+    .scen-table th {
+      background: #1e293b;
+      color: #38bdf8;
+      padding: 3mm 2mm;
+      border: 1px solid #334155;
+      text-align: left;
+    }
+    .scen-table td {
+      padding: 2.5mm 2mm;
+      border: 1px solid #334155;
+      color: #e2e8f0;
+    }
+    .badge-allow { color: #38bdf8; font-weight: bold; }
+    .badge-quar { color: #f59e0b; font-weight: bold; }
+    .badge-block { color: #ef4444; font-weight: bold; }
+
+    /* Footer */
+    .poster-footer {
+      background: #0f172a;
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      border-radius: 6mm;
+      padding: 5mm 12mm;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 9pt;
+      color: #94a3b8;
+    }
+    .footer-left strong {
+      color: #f1f5f9;
+    }
+    .footer-right code {
+      color: #38bdf8;
+      background: #1e293b;
+      padding: 1mm 3mm;
+      border-radius: 2mm;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header Area -->
+  <header class="poster-header">
+    <div class="header-text">
+      <div class="univ-tag">SR UNIVERSITY &bull; SCHOOL OF COMPUTER SCIENCE AND ARTIFICIAL INTELLIGENCE &bull; CAPSTONE 2026-2027</div>
+      <h1 class="project-title">SafeGate 2.0: AI-Powered Website Video Upload Firewall</h1>
+      <h2 class="project-subtitle">Complete Decoded Frame Extraction, Neural Deepfake Detection &amp; Zero-Trust Publishing Gateway</h2>
+      <div class="author-meta">
+        <span><strong>Student Author:</strong> Bongoni Devendar Goud (2103A52001)</span>
+        <span><strong>Internal Guide:</strong> Dr. CH. Sandeep, Assoc. Prof. &amp; Head CS&amp;AI</span>
+        <span><strong>Dean:</strong> Dr. M. Sheshikala</span>
+        <span><strong>Coordinator:</strong> Mr. Sallauddin Md</span>
+      </div>
+    </div>
+    <div class="header-logo-box">
+      <span class="sru-logo-text">SrU</span>
+      <span class="sru-sub-text">SR UNIVERSITY</span>
+    </div>
+  </header>
+
+  <!-- 3-Column Content Layout -->
+  <main class="poster-grid">
+    
+    <!-- COLUMN 1: Introduction, Problem & Protocol -->
+    <div class="poster-col">
+      <div class="card">
+        <h3 class="card-title"><span>🛡️</span> 1. Problem Statement &amp; Motivation</h3>
+        <div class="card-content">
+          <p>
+            Generative AI and neural synthesis (GANs, Diffusion, face-swapping) allow adversaries to generate highly realistic manipulated videos. Modern Web Application Firewalls (WAFs) only examine network packets, headers, and SQL/XSS signatures, treating video uploads as uninspected binary payloads.
+          </p>
+          <p>
+            Existing commercial deepfake scanners perform superficial sampling (1–2 frames/second), allowing malicious actors to bypass security using <strong>single-frame temporal splice attacks</strong>. Once published to a public platform, the reputational and social harm is instantaneous.
+          </p>
+          <p>
+            <strong>Core Objective:</strong> Build an in-line, fail-closed video upload firewall that decodes 100% of video frames, classifies every frame with AI models, and blocks unauthorized media before publication.
+          </p>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 class="card-title"><span>⚙️</span> 2. 7-Layer OSI Video Protocol Stack</h3>
+        <div class="card-content">
+          <p>SafeGate 2.0 enforces defense-in-depth across 7 protocol layers:</p>
+          <ul>
+            <li><strong>L1 - Physical Bitstream:</strong> Magic byte validation &amp; quarantine buffering.</li>
+            <li><strong>L2 - Temporal Frame Link:</strong> Complete frame extraction via FFmpeg/OpenCV.</li>
+            <li><strong>L3 - Transport &amp; Hashes:</strong> Frame-level SHA-256 fingerprinting.</li>
+            <li><strong>L4 - Perceptual Session:</strong> pHash visual blocklisting &amp; caching.</li>
+            <li><strong>L5 - Forensic Presentation:</strong> Compression MSE &amp; Laplacian variance.</li>
+            <li><strong>L6 - Cognitive AI:</strong> PyTorch convolutional frequency classification.</li>
+            <li><strong>L7 - Firewall Policy Gate:</strong> Tri-state decisioning (ALLOW/QUARANTINE/BLOCK).</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- COLUMN 2: Architecture, Extraction & AI Engine -->
+    <div class="poster-col">
+      <div class="card">
+        <h3 class="card-title"><span>⚡</span> 3. In-Line Firewall Architecture</h3>
+        <div class="card-content">
+          <div class="arch-flow-box">
+[USER UPLOAD] ➔ [SAFEGATE FIREWALL BUFFER]
+       │
+       ▼ (100% Frame Extraction)
+[OPENCV / FFMPEG STREAM DECODER]
+       │
+       ├─► PyTorch Neural Classifier
+       └─► Forensic Physics Engine (MSE / Sharpness)
+       │
+       ▼ (Composite Risk Scoring: 0 - 100)
+[POLICY ENGINE: ALLOW | QUARANTINE | BLOCK]
+       │
+       ├─► ALLOW ➔ Published to Demo Website ("SafeTube")
+       ├─► QUARANTINE ➔ SOC Queue (Zero Public CDN Access)
+       └─► BLOCK ➔ File Rejected &amp; Cryptographically Purged
+          </div>
+          <p>
+            <strong>100% Extraction Guarantee:</strong> A 60-second video at 30 FPS yields exactly 1,800 decoded frames. Zero frames are skipped.
+          </p>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 class="card-title"><span>🎨</span> 4. Frame Color Classification System</h3>
+        <div class="card-content">
+          <p>Every extracted frame is visually stamped according to the strict inverted forensic convention:</p>
+          <div class="color-box-grid">
+            <div class="color-pill pill-red">
+              <span>🔴</span>
+              <div>
+                <strong>RED — LEGITIMATE / AUTHENTIC FRAME</strong><br>
+                Natural CMOS sensor noise profile, consistent optical focus.
+              </div>
+            </div>
+            <div class="color-pill pill-green">
+              <span>🟢</span>
+              <div>
+                <strong>GREEN — SUSPICIOUS / AI-MANIPULATED</strong><br>
+                Synthetic frequency artifacts, high compression residuals.
+              </div>
+            </div>
+            <div class="color-pill pill-yellow">
+              <span>🟡</span>
+              <div>
+                <strong>YELLOW — UNCERTAIN / AMBIGUOUS</strong><br>
+                Low contrast, underexposure, or model inference failure.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- COLUMN 3: Empirical Validation, SOC & Conclusion -->
+    <div class="poster-col">
+      <div class="card">
+        <h3 class="card-title"><span>📊</span> 5. Experimental Validation (6 Scenarios)</h3>
+        <div class="card-content">
+          <table class="scen-table">
+            <thead>
+              <tr>
+                <th>Scenario</th>
+                <th>Classification</th>
+                <th>Risk</th>
+                <th>Firewall Decision</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>1. Authentic Video</strong></td>
+                <td>100% RED</td>
+                <td>0 / 100</td>
+                <td><span class="badge-allow">ALLOW (Published)</span></td>
+              </tr>
+              <tr>
+                <td><strong>2. Deepfake Video</strong></td>
+                <td>45 GREEN</td>
+                <td>92 / 100</td>
+                <td><span class="badge-quar">QUARANTINE (Held)</span></td>
+              </tr>
+              <tr>
+                <td><strong>3. Single-Frame Tamper</strong></td>
+                <td>Frame #25 GREEN</td>
+                <td>68 / 100</td>
+                <td><span class="badge-quar">QUARANTINE (Pinpoint)</span></td>
+              </tr>
+              <tr>
+                <td><strong>4. Uncertain Clarity</strong></td>
+                <td>Frames YELLOW</td>
+                <td>50 / 100</td>
+                <td><span class="badge-quar">QUARANTINE (Fail-Closed)</span></td>
+              </tr>
+              <tr>
+                <td><strong>5. Corrupted Stream</strong></td>
+                <td>Bad Bitstream</td>
+                <td>100 / 100</td>
+                <td><span class="badge-block">BLOCK (Rejected)</span></td>
+              </tr>
+              <tr>
+                <td><strong>6. AI Model Failure</strong></td>
+                <td>Inference Error</td>
+                <td>N/A</td>
+                <td><span class="badge-quar">QUARANTINE (Locked)</span></td>
+              </tr>
+            </tbody>
+          </table>
+          <p style="margin-top: 4mm;">
+            <strong>Pinpoint Detection:</strong> Scenario 3 successfully detects a single modified frame at Frame #25 (`00:00:01.042`) amid 44 authentic frames.
+          </p>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 class="card-title"><span>🔒</span> 6. SOC Ledger &amp; Conclusion</h3>
+        <div class="card-content">
+          <p>
+            <strong>Tamper-Evident SHA-256 Audit Trail:</strong> Every scan, decision, and moderator override is chained sequentially:
+            <code>Row[i] = SHA256(Row[i-1] + Action + UploadID + Ts)</code>.
+          </p>
+          <p>
+            <strong>Verification Suite:</strong> 74 out of 74 automated pytest unit and integration tests passing with 100% success rate.
+          </p>
+          <p>
+            <strong>Conclusion:</strong> SafeGate 2.0 demonstrates that frame-level AI deepfake screening can operate in-line with zero-trust publishing gating, preventing synthetic media from compromising public platforms.
+          </p>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Footer Area -->
+  <footer class="poster-footer">
+    <div class="footer-left">
+      <strong>SafeGate 2.0 Capstone Defense</strong> &bull; School of Computer Science &amp; Artificial Intelligence, SR University, Warangal
+    </div>
+    <div class="footer-right">
+      <span>Open-Source Implementation: <code>https://github.com/BongoniDevendarGoud/safegate</code></span>
+    </div>
+  </footer>
+
+</body>
+</html>
