@@ -559,6 +559,7 @@ export function CreatePostModal() {
         <div class="screening-stats-pills">
           <span class="sc-pill pill-green" id="scPillSafe">🟢 Safe Frames: 0</span>
           <span class="sc-pill pill-red" id="scPillMorphed">🔴 Morphed / Bad: 0</span>
+          <span class="sc-pill pill-yellow" id="scPillUncert" style="display: none;">🟡 Uncertain: 0</span>
         </div>
 
         <!-- Live Extracted Frames Preview Strip inside Screening Sheet -->
@@ -574,20 +575,38 @@ export function CreatePostModal() {
           </div>
         </div>
 
-        <!-- Blocked / Morphed Alert Message Box (Shown if Morphed/Bad) -->
+        <!-- Blocked / Morphed Alert Message Box (Shown if RED / Morphed/Bad) -->
         <div id="screeningBlockedBox" class="screening-blocked-box" style="display: none;">
-          <div class="blocked-title">
-            <span>🚫</span> Post Blocked by SafeGate AI Firewall
+          <div class="blocked-title" style="color: var(--morphed-red);">
+            <span>🚫</span> Video Upload Rejected &amp; Blocked
           </div>
           <div class="blocked-desc" id="screeningBlockedDesc">
-            We detected morphed, AI-manipulated, or prohibited video content. In accordance with media integrity and community guidelines, this video has been quarantined and cannot be published to your Instagram feed.
+            SafeGate in-line firewall detected morphed, deepfake, or prohibited content (marked RED). In accordance with media integrity security policy, this video WILL NOT BE UPLOADED and publication is permanently blocked.
           </div>
           <div class="blocked-actions-row">
             <button class="btn-scenario-action scen-morphed" onclick="viewViolationsInConsole()">
-              🔍 Inspect in SafeGate Console
+              🔍 Inspect Violations in Console
             </button>
             <button class="btn-scenario-action" onclick="closeCreateModal()">
-              ✕ Discard Post
+              ✕ Discard Video
+            </button>
+          </div>
+        </div>
+
+        <!-- Inspection Required Box (Shown if YELLOW / Uncertain Frames) -->
+        <div id="screeningInspectionBox" class="screening-blocked-box" style="display: none; border-color: var(--uncertain-yellow); background: rgba(234, 179, 8, 0.1);">
+          <div class="blocked-title" style="color: var(--uncertain-yellow);">
+            <span>🟡</span> Video Sent for Security Inspection
+          </div>
+          <div class="blocked-desc" id="screeningInspectionDesc" style="color: #fef08a;">
+            SafeGate detected uncertain or low-confidence clarity in some frames (marked YELLOW). This video CANNOT be published automatically. It has been routed to the Quarantine Inspection Queue. Only after an administrator inspects and authorizes the video will it be published.
+          </div>
+          <div class="blocked-actions-row">
+            <button class="btn-scenario-action scen-uncertain" onclick="viewViolationsInConsole()">
+              🔍 Open Inspection Queue in Console
+            </button>
+            <button class="btn-scenario-action" onclick="closeCreateModal()">
+              ✓ Acknowledge &amp; Wait for Approval
             </button>
           </div>
         </div>

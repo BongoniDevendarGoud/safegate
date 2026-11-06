@@ -403,33 +403,65 @@ async function triggerInstagramShare() {
     const totalFrames = result.total_frames || result.report?.frame_statistics?.total_frames || 0;
     const safeFrames = result.legitimate_frames || result.report?.frame_statistics?.legitimate_frames || 0;
     const morphedFrames = result.suspicious_frames || result.report?.frame_statistics?.suspicious_frames || 0;
+    const uncertFrames = result.uncertain_frames || result.report?.frame_statistics?.uncertain_frames || 0;
+
+    const scUncert = document.getElementById('scPillUncert');
+    const inspectionBox = document.getElementById('screeningInspectionBox');
 
     barFill.style.width = "100%";
     scSafe.innerText = `🟢 Safe Frames: ${safeFrames}`;
     scMorphed.innerText = `🔴 Morphed / Bad: ${morphedFrames}`;
+    if (scUncert) {
+      scUncert.innerText = `🟡 Uncertain: ${uncertFrames}`;
+      scUncert.style.display = uncertFrames > 0 ? 'inline-block' : 'none';
+    }
 
     // Immediately extract & render frames for the present video
     await loadVideoFramesForConsole(result.video_id);
     await loadTimelineForConsole(result.video_id);
 
-    if (verdict === 'ALLOW') {
-      // 🟢 SUCCESS: Safe video passes firewall
-      stageText.innerText = `✓ Clean Verification Passed! All ${totalFrames} frames verified authentic (GREEN).`;
+    // 1. RULE 1: ONLY IF IT IS SAFE (ALL GREEN) THE VIDEO GETS UPLOADED
+    if (verdict === 'ALLOW' || (morphedFrames === 0 && uncertFrames === 0 && safeFrames > 0)) {
+      stageText.innerHTML = `✓ <strong>SAFE VIDEO VERIFIED</strong>: All ${totalFrames} frames authentic (GREEN). Post successfully uploaded and published to feed!`;
+      barFill.style.background = 'var(--safe-green)';
+      if (blockedBox) blockedBox.style.display = 'none';
+      if (inspectionBox) inspectionBox.style.display = 'none';
+
       setTimeout(() => {
         closeCreateModal();
         loadInstagramFeed();
         loadConsoleDashboard();
       }, 1600);
 
-    } else {
-      // 🔴 MORPHED / DEEPFAKE / BAD CONTENT BLOCKED
-      stageText.innerText = `🚫 Post Blocked: Detected ${morphedFrames} morphed/AI-manipulated frame(s) (RED).`;
+    // 2. RULE 2: IF IT IS RED THE VIDEO WILL NOT BE UPLOADED
+    } else if (morphedFrames > 0 || verdict === 'BLOCK') {
+      stageText.innerHTML = `🚫 <strong>UPLOAD REJECTED & BLOCKED</strong>: Detected ${morphedFrames} morphed / deepfake frame(s) (RED). Video will NOT be uploaded.`;
+      barFill.style.background = 'var(--morphed-red)';
+      if (inspectionBox) inspectionBox.style.display = 'none';
       if (blockedBox) {
         document.getElementById('screeningBlockedDesc').innerHTML = `
-          SafeGate in-line firewall intercepted <strong>${morphedFrames} morphed, deepfake, or bad frame(s)</strong> (marked 🔴 <strong>RED</strong>). 
-          This post violates media authenticity guidelines and has been <strong>blocked from publishing</strong> to your Instagram feed.
+          SafeGate in-line firewall detected <strong>${morphedFrames} morphed, deepfake, or restricted frame(s)</strong> (marked 🔴 <strong>RED</strong>).
+          <br><br>
+          <strong>Security Policy:</strong> This video <strong>WILL NOT BE UPLOADED</strong> and is permanently rejected from publishing.
         `;
         blockedBox.style.display = 'block';
+      }
+      loadConsoleDashboard();
+
+    // 3. RULE 3: IF IT IS YELLOW THE VIDEO WILL BE SENT FOR INSPECTION (ONLY PUBLISHED AFTER THAT)
+    } else {
+      stageText.innerHTML = `🟡 <strong>SENT FOR INSPECTION</strong>: Detected ${uncertFrames} uncertain frame(s) (YELLOW). Held for administrative inspection.`;
+      barFill.style.background = 'var(--uncertain-yellow)';
+      if (blockedBox) blockedBox.style.display = 'none';
+      if (inspectionBox) {
+        document.getElementById('screeningInspectionDesc').innerHTML = `
+          SafeGate detected <strong>${uncertFrames} frame(s)</strong> with low-contrast, optical blur, or uncertain AI confidence (marked 🟡 <strong>YELLOW</strong>).
+          <br><br>
+          <strong>Zero-Trust Protocol:</strong> The video cannot be published automatically. It has been routed to the <strong>Quarantine Inspection Queue</strong> for administrator review. 
+          <br><br>
+          <strong>Notice:</strong> Only after an administrator inspects and authorizes the video will it be allowed to publish to the platform feed.
+        `;
+        inspectionBox.style.display = 'block';
       }
       loadConsoleDashboard();
     }
@@ -835,24 +867,27 @@ async function loadTimelineForConsole(videoId) {
 
 async function loadConsoleDashboard() {
   try {
-    const res = await fetch('/api/admin/dashboard');
-    if (!res.ok) return;
-    const data = await res.json();
+    const [dashRes, quarRes] = await Promise.all([
+      fetch('/api/admin/dashboard').catch(() => null),
+      fetch('/api/admin/videos?verdict=QUARANTINE&limit=50').catch(() => null)
+    ]);
+
+    const quarData = quarRes && quarRes.ok ? await quarRes.json() : { videos: [] };
+    const queue = quarData.videos || [];
 
     const badge = document.getElementById('sidebarQuarantineBadge');
     if (badge) {
-      badge.innerText = data.quarantine_queue?.length || 0;
+      badge.innerText = queue.length;
     }
 
     const tbody = document.getElementById('inspectQuarantineTbody');
     if (!tbody) return;
 
-    const queue = data.quarantine_queue || [];
     if (queue.length === 0) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="6" style="padding: 20px; text-align: center; color: var(--ig-muted);">
-            ✓ Quarantine queue is empty. No videos awaiting administrator determination.
+          <td colspan="6" style="padding: 24px; text-align: center; color: var(--ig-muted);">
+            ✓ Inspection queue is clear. No videos awaiting administrative inspection.
           </td>
         </tr>
       `;
@@ -860,17 +895,53 @@ async function loadConsoleDashboard() {
     }
 
     tbody.innerHTML = queue.map(v => {
+      const suspCount = v.suspicious_frames_count || 0;
+      const uncertCount = v.uncertain_frames_count || 0;
+      const hasRed = suspCount > 0;
+      const isYellow = !hasRed && uncertCount > 0;
+
+      let statusDisplay = '';
+      let actionButtons = '';
+
+      if (hasRed) {
+        statusDisplay = `
+          <span style="color: #ef4444; font-weight: 800;">🔴 REJECTED (RED: ${suspCount})</span>
+          <div style="font-size: 10px; color: #f87171;">Upload Denied - Morphed/Bad Content</div>
+        `;
+        actionButtons = `
+          <button class="btn-scenario-action scen-morphed" style="padding: 4px 10px; font-size: 11px;" onclick="moderatePost('${v.id}', 'reject')">
+            ✕ Confirm Reject &amp; Purge
+          </button>
+        `;
+      } else if (isYellow) {
+        statusDisplay = `
+          <span style="color: #eab308; font-weight: 800;">🟡 Awaiting Inspection (YELLOW: ${uncertCount})</span>
+          <div style="font-size: 10px; color: #fef08a;">Held for Review Before Publishing</div>
+        `;
+        actionButtons = `
+          <button class="btn-scenario-action scen-safe" style="padding: 4px 10px; font-size: 11px;" onclick="moderatePost('${v.id}', 'approve')">
+            ✓ Inspect &amp; Authorize Publication
+          </button>
+          <button class="btn-scenario-action scen-morphed" style="padding: 4px 10px; font-size: 11px;" onclick="moderatePost('${v.id}', 'reject')">
+            ✕ Reject
+          </button>
+        `;
+      } else {
+        statusDisplay = `<span style="color: #38bdf8; font-weight: 700;">Quarantined (${v.verdict})</span>`;
+        actionButtons = `
+          <button class="btn-scenario-action scen-safe" style="padding: 4px 10px; font-size: 11px;" onclick="moderatePost('${v.id}', 'approve')">Approve</button>
+          <button class="btn-scenario-action scen-morphed" style="padding: 4px 10px; font-size: 11px;" onclick="moderatePost('${v.id}', 'reject')">Reject</button>
+        `;
+      }
+
       return `
         <tr style="border-bottom: 1px solid var(--ig-border);">
-          <td style="padding: 8px 10px; font-family: var(--mono-family); color: var(--firewall-cyan);">${v.video_id.substring(0, 8)}...</td>
-          <td style="padding: 8px 10px; font-weight: 700;">${escapeHtml(v.title || v.original_filename)}</td>
-          <td style="padding: 8px 10px; color: var(--morphed-red); font-weight: 700;">${Math.round(v.risk_score || 0)} / 100</td>
-          <td style="padding: 8px 10px;"><span style="color: var(--morphed-red); font-weight: 700;">${v.verdict}</span></td>
-          <td style="padding: 8px 10px; font-family: var(--mono-family); font-size: 11px;">${v.publishing_status}</td>
-          <td style="padding: 8px 10px;">
-            <button class="btn-scenario-action scen-safe" style="padding: 3px 8px; font-size: 11px;" onclick="moderatePost('${v.video_id}', 'approve')">Approve</button>
-            <button class="btn-scenario-action scen-morphed" style="padding: 3px 8px; font-size: 11px;" onclick="moderatePost('${v.video_id}', 'reject')">Reject</button>
-          </td>
+          <td style="padding: 10px 12px; font-family: var(--mono-family); color: var(--firewall-cyan);">${v.id.substring(0, 8)}...</td>
+          <td style="padding: 10px 12px; font-weight: 700;">${escapeHtml(v.title || v.original_filename)}</td>
+          <td style="padding: 10px 12px; color: ${hasRed ? 'var(--morphed-red)' : 'var(--uncertain-yellow)'}; font-weight: 700;">${Math.round(v.risk_score || 0)} / 100</td>
+          <td style="padding: 10px 12px;"><span style="color: ${hasRed ? 'var(--morphed-red)' : 'var(--uncertain-yellow)'}; font-weight: 700;">${v.verdict}</span></td>
+          <td style="padding: 10px 12px; font-family: var(--mono-family); font-size: 11px;">${statusDisplay}</td>
+          <td style="padding: 10px 12px;">${actionButtons}</td>
         </tr>
       `;
     }).join('');
@@ -887,10 +958,20 @@ async function moderatePost(videoId, action) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ reason: `SOC manual ${action}` })
     });
-    if (!res.ok) throw new Error("Action failed");
-    alert(`Post ${videoId} successfully ${action}d.`);
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.detail || "Action failed");
+    }
+
+    if (action === 'approve') {
+      alert(`✓ Inspection Complete: Video ${videoId.substring(0, 8)}... has been authorized by inspector and is now published to the public Instagram feed!`);
+    } else {
+      alert(`✓ Video ${videoId.substring(0, 8)}... has been rejected and permanently purged from server.`);
+    }
+
     loadConsoleDashboard();
     loadInstagramFeed();
+    refreshConsoleVideos();
   } catch (err) {
     alert(`Moderation error: ${err.message}`);
   }
