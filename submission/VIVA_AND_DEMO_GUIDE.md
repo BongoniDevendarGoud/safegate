@@ -20,18 +20,18 @@
 > First, our **100% Decoded Frame Extraction Engine**. Unlike commercial scanners that downsample to 1–2 frames per second, SafeGate decodes and extracts every single frame using OpenCV and FFmpeg. A 60-second video at 30 FPS yields exactly 1,800 decoded frames, each stamped with an individual SHA-256 cryptographic hash and millisecond timestamp.
 > Second, our **Dual-Engine AI Classification**. We pair a PyTorch convolutional neural network analyzing high-frequency generative artifacts with optical physical heuristics: JPEG recompression residual error MSE, Laplacian edge sharpness variance, and temporal color histogram correlation.
 > Third, our **Strict Forensic Color Classification**:
-> - 🔴 **RED** denotes Legitimate / Authentic frames.
-> - 🟢 **GREEN** denotes Suspicious / AI-Manipulated frames.
+> - 🟢 **GREEN** denotes Safe / Legitimate / Authentic frames.
+> - 🔴 **RED** denotes Morphed / Suspicious / AI-Manipulated frames, sexual or bad content.
 > - 🟡 **YELLOW** denotes Uncertain / Ambiguous frames.
-> Green denotes an active detection of an anomaly, while Red represents baseline ground truth."
+> Green denotes verified safe authentic ground truth, Red represents deepfake or morphed content, and Yellow prevents false negatives under our fail-closed doctrine."
 
 ### Minute 02:30 – 04:30: Live Demonstration of Scenarios
 > "Let me share my screen to show our working web application running at `http://localhost:8000`.
-> Here is our demo video-sharing platform, 'SafeTube'. Under SafeGate's zero-trust gate, only videos that have received an ALLOW decision are published.
-> In **Scenario 1**, we upload an authentic CMOS camera video. All 45 frames are classified RED, yielding an ALLOW verdict. The video immediately appears on the public feed and is playable.
+> Here is our demo social platform, built with a complete Instagram-style interface. Notice that SafeGate is not just an isolated upload form—it works as an embedded background firewall that screens videos during the user upload workflow.
+> In **Scenario 1**, we upload an authentic camera video. All 45 frames are classified GREEN, yielding an ALLOW verdict. The post immediately publishes to the Instagram feed with a 'SafeGate Verified Safe' badge and is playable.
 > Now, observe **Scenario 3: Single-Frame Tampering**. Here, 44 frames are pristine, but exactly Frame #25 at timestamp `00:00:01.042` was injected with synthetic noise.
-> SafeGate does not miss it. In the Video Timeline, the scrubber is solid RED with a single GREEN marker at Frame #25. Opening our deep frame inspection modal, we can compare adjacent frames side-by-side: Frame 24 is clean RED, Frame 25 is flagged GREEN with high JPEG MSE, and Frame 26 is clean RED.
-> Because of this single anomaly, the firewall enforces a **QUARANTINE** decision. Returning to SafeTube, we see the video has been blocked from publication, protecting public users."
+> SafeGate does not miss it. In the Video Timeline, the scrubber is solid GREEN with a single RED marker at Frame #25. Opening our deep frame inspection modal, we can compare adjacent frames side-by-side: Frame 24 is clean GREEN, Frame 25 is flagged RED with high JPEG MSE, and Frame 26 is clean GREEN.
+> Because of this single anomaly, the firewall enforces a **QUARANTINE** decision. Returning to the Instagram app, we see the upload modal displays a security warning and blocks the post from reaching the feed, protecting public users."
 
 ### Minute 04:30 – 05:30: SOC Moderation, Audit Ledger & Verification
 > "In our SOC Moderation Dashboard, security analysts can review the quarantine queue and inspect evidence.
@@ -46,10 +46,9 @@
 
 ## 2. Anticipated Panel Questions & Expert Answers
 
-### Q1: Why did you invert the conventional Red/Green color convention?
+### Q1: How does SafeGate integrate with third-party web and mobile apps?
 **Answer:**  
-"In consumer dashboards, green typically means 'good' and red means 'alert'. However, in signal processing, radar systems, and military threat intelligence, **Green represents a positive detection of an anomaly or target** (the detector 'lit up'), whereas **Red represents the baseline authentic ground truth** (clean camera sensor signature).  
-By adopting this strict convention, SafeGate clearly communicates detection evidence to forensic analysts: when a frame is marked Green, the AI engine has positively detected a synthetic artifact. Yellow is reserved for uncertainty to prevent false negatives under our fail-closed doctrine."
+"SafeGate is designed as a drop-in background firewall and Any-App SDK. Rather than requiring users to visit an external website, platforms like Instagram, TikTok, banking video KYC, or news CMS portals integrate SafeGate directly into their upload endpoints in 3 lines of code (Node.js/Express, Python/FastAPI, or client-side React). The user uploads normally, and SafeGate intercepts the stream in the background, rendering a real-time screening sheet and blocking bad content before database commitment."
 
 ### Q2: Why is complete frame extraction necessary instead of sampling 1 or 2 frames per second?
 **Answer:**  

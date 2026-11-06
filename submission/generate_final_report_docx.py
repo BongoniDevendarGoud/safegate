@@ -372,7 +372,7 @@ def build_report_docx():
         "Crucially, SafeGate 2.0 eliminates the fatal vulnerability of keyframe subsampling by implementing a 100% Complete Decoded Frame Extraction Engine. Powered by OpenCV and FFmpeg stream decoding, the engine guarantees that every single frame (e.g. 1,800 frames for a 60-second video at 30 FPS) is extracted, assigned a millisecond-accurate timestamp, and individually fingerprinted with a cryptographic SHA-256 hash. Extracted frames are evaluated via a Dual-Engine AI Classifier combining a PyTorch frequency-domain convolutional neural network with physical forensic optical heuristics (JPEG recompression residual MSE, Laplacian edge focus variance, and inter-frame color histogram correlation)."
     )
     add_body_p(doc,
-        "SafeGate 2.0 enforces a strict, inverted forensic color classification convention: RED designates Legitimate/Authentic frames, GREEN denotes Suspicious/AI-Manipulated frames, and YELLOW indicates Uncertain frames. Videos are scored on a composite 0-to-100 risk scale and gated under a strict zero-trust policy: clean videos receive an ALLOW decision and are published to the web feed, whereas videos with even one suspicious or ambiguous frame are locked in QUARANTINE with zero public CDN exposure. An immutable, HMAC SHA-256 hash-chained audit ledger cryptographically anchors all decisions. Extensive empirical benchmarking across six realistic scenarios demonstrates 100% detection accuracy on full deepfakes and successfully pinpoints single-frame temporal splice attacks (Frame #25 out of 45 frames). SafeGate 2.0 is validated by 74 automated unit, integration, and security tests passing with zero regressions."
+        "SafeGate 2.0 enforces a strict, intuitive security color classification convention: GREEN designates Safe/Legitimate/Authentic frames, RED denotes Morphed/Suspicious/AI-Manipulated/Bad content, and YELLOW indicates Uncertain frames. Videos are scored on a composite 0-to-100 risk scale and gated under a strict zero-trust policy: clean videos receive an ALLOW decision and are published directly to the Instagram feed, whereas videos with even one morphed, deepfake, or ambiguous frame are locked in QUARANTINE with zero public CDN exposure. An immutable, HMAC SHA-256 hash-chained audit ledger cryptographically anchors all decisions. Extensive empirical benchmarking across six realistic scenarios demonstrates 100% detection accuracy on full deepfakes and successfully pinpoints single-frame temporal splice attacks (Frame #25 out of 45 frames). SafeGate 2.0 is validated by 74 automated unit, integration, and security tests passing with zero regressions."
     )
 
     doc.add_page_break()
@@ -606,9 +606,9 @@ def build_report_docx():
         c.paragraphs[0].runs[0].font.bold = True
 
     s_data = [
-        ("1. Authentic Video", "45 Decoded", "45 RED (Legitimate)", "0 / 100", "ALLOW (Published)"),
-        ("2. Deepfake Video", "45 Decoded", "45 GREEN (Suspicious)", "92 / 100", "QUARANTINE (Held)"),
-        ("3. Single-Frame Tamper", "45 Decoded", "Frame 25 GREEN, 44 RED", "68 / 100", "QUARANTINE (Pinpointed)"),
+        ("1. Authentic Video", "45 Decoded", "45 GREEN (Safe)", "0 / 100", "ALLOW (Published to Feed)"),
+        ("2. Deepfake Video", "45 Decoded", "45 RED (Morphed/Bad)", "92 / 100", "QUARANTINE (Blocked)"),
+        ("3. Single-Frame Tamper", "45 Decoded", "Frame 25 RED, 44 GREEN", "68 / 100", "QUARANTINE (Pinpoint Caught)"),
         ("4. Uncertain Clarity", "45 Decoded", "45 YELLOW (Uncertain)", "50 / 100", "QUARANTINE (Fail-Closed)"),
         ("5. Corrupted Stream", "0 (Truncated)", "Header Integrity Failure", "100 / 100", "BLOCK (Rejected & Purged)"),
         ("6. AI Model Failure", "45 Decoded", "Inference Exception", "N/A", "QUARANTINE (Safety Locked)")
@@ -622,7 +622,7 @@ def build_report_docx():
                 r.font.name = 'Times New Roman'; r.font.size = Pt(10)
 
     add_body_p(doc,
-        "Experimental Analysis: Scenario 3 demonstrates the decisive superiority of SafeGate 2.0 over conventional keyframe-sampling scanners. While conventional 1 FPS scanners skip Frame #25 entirely, SafeGate decodes every frame sequentially, identifies Frame #25 at timestamp 00:00:01.042 as GREEN, clusters it into a distinct Suspicious Segment, and safely quarantines the video before it can reach the public SafeTube feed."
+        "Experimental Analysis: Scenario 3 demonstrates the decisive superiority of SafeGate 2.0 over conventional keyframe-sampling scanners. While conventional 1 FPS scanners skip Frame #25 entirely, SafeGate decodes every frame sequentially, identifies Frame #25 at timestamp 00:00:01.042 as RED (Morphed/Bad), clusters it into a distinct Suspicious Segment, and safely blocks the video before it can reach the public Instagram feed."
     )
 
     add_styled_heading(doc, "10.2 Automated Unit & Integration Testing Coverage", level=2)

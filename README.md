@@ -19,43 +19,43 @@
 ## 1. System Architecture
 
 ```text
-       USER UPLOADS VIDEO
+       USER UPLOADS VIDEO (e.g., INSTAGRAM POST / REEL / STORY)
                |
                v
-  DEMO VIDEO-SHARING WEBSITE (SafeTube)
+   HOST APPLICATION CLIENT / WORKFLOW
                |
-               v [INTERCEPTED]
-    SAFEGATE UPLOAD FIREWALL
-               |
-               v
-  STAGE 1: FILE VALIDATION & SECURE BUFFERING (Magic Bytes, Non-Executable Quarantine)
+               v [INTERCEPTED IN BACKGROUND]
+     SAFEGATE UPLOAD FIREWALL SDK
                |
                v
-  STAGE 2: VIDEO METADATA EXTRACTION (Duration, Container, FPS, Dimensions)
+   STAGE 1: FILE VALIDATION & SECURE BUFFERING (Magic Bytes, Non-Executable Quarantine)
                |
                v
-  STAGE 3: COMPLETE FRAME EXTRACTION (FFmpeg / OpenCV, Every Decoded Frame, SHA-256)
+   STAGE 2: VIDEO METADATA EXTRACTION (Duration, Container, FPS, Dimensions)
                |
                v
-  STAGE 4: FRAME-BY-FRAME AI & FORENSIC DETECTION (PyTorch CNN + Forensic Engine)
+   STAGE 3: COMPLETE FRAME EXTRACTION (FFmpeg / OpenCV, Every Decoded Frame, SHA-256)
                |
                v
-  STAGE 5: FRAME COLOR CLASSIFICATION (RED = Legit, GREEN = Suspicious, YELLOW = Uncertain)
+   STAGE 4: FRAME-BY-FRAME AI & FORENSIC DETECTION (PyTorch CNN + Forensic Engine)
                |
                v
-  STAGE 6: VIDEO RISK ASSESSMENT (Composite Risk Scoring 0 - 100)
+   STAGE 5: FRAME COLOR CLASSIFICATION (GREEN = Safe, RED = Morphed/Bad, YELLOW = Uncertain)
                |
                v
-  STAGE 7: FIREWALL POLICY DECISION ENGINE
+   STAGE 6: VIDEO RISK ASSESSMENT (Composite Risk Scoring 0 - 100)
                |
-      +--------+-----------------------+
-      |                                |                               |
-      v                                v                               v
-    ALLOW                          QUARANTINE                        BLOCK
-(All Frames RED)              (>=1 GREEN / YELLOW)             (Corrupted / Prohibited)
-      |                                |                               |
-      v                                v                               v
-PUBLISH TO WEBSITE               SOC ADMIN REVIEW                REJECT & PURGE
+               v
+   STAGE 7: FIREWALL POLICY DECISION ENGINE
+               |
+       +--------+-----------------------+
+       |                                |                               |
+       v                                v                               v
+     ALLOW                          QUARANTINE                        BLOCK
+(All Frames GREEN)             (>=1 RED / YELLOW)              (Corrupted / Prohibited)
+       |                                |                               |
+       v                                v                               v
+PUBLISH TO SOCIAL FEED            SOC ADMIN REVIEW                REJECT & PURGE
 ```
 
 ---
@@ -85,28 +85,25 @@ SafeGate 2.0 combines deep neural networks with physical optical heuristics to d
 
 ## 4. Strict Frame Color Classification System
 
-SafeGate 2.0 employs a strict, user-specified color convention:
+SafeGate 2.0 employs a strict, intuitive color convention:
 
 | Classification | Visual Marker | Hex Code | Meaning & System Response |
 | :--- | :---: | :---: | :--- |
-| **LEGITIMATE** | 🔴 **RED** | `#ef4444` | **Authentic frame.** Captured naturally by physical CMOS optical sensor. Natural noise and color coherence. |
-| **SUSPICIOUS / AI** | 🟢 **GREEN** | `#22c55e` | **AI-Manipulated / Deepfake.** Neural synthesis artifacts, face-swapping anomalies, or splice boundaries detected. |
+| **SAFE / AUTHENTIC** | 🟢 **GREEN** | `#22c55e` | **Legitimate frame.** Captured naturally by physical CMOS optical sensor. Natural noise and color coherence. Verified safe to publish. |
+| **MORPHED / SUSPICIOUS / BAD CONTENT** | 🔴 **RED** | `#ef4444` | **AI-Manipulated / Deepfake / Sexual / Harmful.** Neural synthesis artifacts, face-swapping anomalies, morphed bodies, or harmful content detected. |
 | **UNCERTAIN** | 🟡 **YELLOW** | `#eab308` | **Ambiguous / Inconclusive.** Low Laplacian variance, extreme underexposure, or model inference uncertainty. |
-
-> [!WARNING]
-> **Intentional Inversion:** SafeGate's RED (Legitimate) and GREEN (Suspicious) convention is intentionally distinct from conventional consumer dashboards by design. Do not alter this mapping.
 
 ---
 
-## 5. Interactive Web Application
+## 5. Instagram Platform Interface & Any-App SDK
 
-The frontend dashboard provides 7 dedicated security views:
+SafeGate 2.0 is not merely an isolated website for uploading files — it is an embedded background firewall built to integrate inside any consumer or enterprise application:
 
-1. **Demo Video-Sharing Platform ("SafeTube"):** Real-world platform simulation (similar to YouTube/Instagram). Displays only videos that have cleared the firewall with an `ALLOW` decision. Quarantined media remains hidden.
-2. **Video Upload & Intercept:** Dropzone interface allowing users to upload MP4, MOV, AVI, or WebM media with real-time video stream preview and pre-flight metadata extraction.
-3. **Real-Time Firewall Scanner:** Live visualization of the 8-stage pipeline, real-time extraction progress bar, SSE event telemetry, and policy determination.
-4. **Interactive Frame Inspection Gallery:** Grid view of all extracted frames with filter chips (`All`, `🔴 Legitimate`, `🟢 Suspicious / AI`, `🟡 Uncertain`). Clicking any card opens the deep frame inspection modal with high-res display and adjacent frame comparison.
-5. **Video Frame Timeline:** Interactive temporal scrubber mapping colored markers (RED, GREEN, YELLOW) across the entire video runtime. Automatically clusters consecutive suspicious frames into **Suspicious Segments** (e.g., `Frames 25–25 (00:00:01.041 - 00:00:01.083)`).
+1. **Instagram Application Interface:** Features a full Instagram-style social media experience (Stories tray, Posts & Reels feed, verified safe badges `🛡️ SafeGate Verified Safe`, engagement bar, like/comment counts).
+2. **Background Upload Interception:** When a user clicks "Share" to post a video/reel, SafeGate intercepts the upload in the background, renders a real-time screening sheet, and classifies 100% of frames before public release. If the video is clean (GREEN), it publishes seamlessly; if morphed or bad (RED), it is blocked with a security alert.
+3. **Any-App Integration SDK:** Drop-in background middleware supporting Node.js/Express, Python/FastAPI, and React with 3 lines of code.
+4. **Interactive Frame Inspection Gallery:** Grid view of all extracted frames with filter chips (`All`, `🟢 Safe`, `🔴 Morphed / Bad`, `🟡 Uncertain`). Clicking any card opens the deep frame inspection modal with high-res display and adjacent frame comparison.
+5. **Video Frame Timeline:** Interactive temporal scrubber mapping colored markers (GREEN, RED, YELLOW) across the entire video runtime. Automatically clusters consecutive suspicious frames into **Suspicious Segments** (e.g., `Frames 25–25 (00:00:01.041 - 00:00:01.083)`).
 6. **SOC Moderation Dashboard:** Security Operations Center console featuring Chart.js telemetry graphs, the active quarantine review queue, one-click manual `Approve` and `Reject` actions, and the tamper-evident SHA-256 audit ledger.
 7. **Video Security Report:** Formal cryptographic verification certificate including media fingerprints, frame breakdown, AI telemetry, and one-click JSON download or PDF export.
 
@@ -118,31 +115,31 @@ SafeGate 2.0 includes 5 real generated MP4 test videos located in `samples/` and
 
 ### Scenario 1: Authentic Video Upload (Passes Firewall)
 - **Input:** `samples/scenario1_legitimate.mp4` (natural camera gradients and realistic kinematics).
-- **Execution:** Click button **`1 Authentic Video (ALLOW)`** or run `python cli.py scan samples/scenario1_legitimate.mp4`.
+- **Execution:** Click button **`1 Authentic Video (ALLOW)`** or upload via the Instagram "Create Post" modal.
 - **Expected Outcome:**
-  - All 45 frames classified as **Legitimate** and marked **RED**.
+  - All 45 frames classified as **Safe / Authentic** and marked **GREEN**.
   - Risk Score: `0 / 100`.
   - Firewall Decision: **ALLOW**.
-  - Public Feed: Video is immediately published and playable on the **Demo Video Platform**.
+  - Social Feed: Video is immediately published with `🛡️ SafeGate Verified Safe` badge and playable on the feed.
 
 ### Scenario 2: Deepfake Video Upload (Intercepted & Quarantined)
 - **Input:** `samples/scenario2_deepfake.mp4` (synthetic high-frequency flicker and high JPEG residual error).
 - **Execution:** Click button **`2 Deepfake Video (QUARANTINE)`**.
 - **Expected Outcome:**
-  - Frames flagged as **Suspicious / AI-Manipulated** and marked **GREEN**.
+  - Frames flagged as **Morphed / Bad Content** and marked **RED**.
   - Risk Score: `>= 80 / 100`.
   - Firewall Decision: **QUARANTINE**.
-  - Public Feed: Video is **blocked from publication**.
+  - Social Feed: Video is **blocked from publication**; in-line upload modal displays "Post Blocked by SafeGate Firewall".
   - SOC Dashboard: Added to the Quarantine Review Queue with review actions.
 
 ### Scenario 3: Single-Frame Modification Detection (Temporal Discontinuity)
 - **Input:** `samples/scenario3_single_modified.mp4` (45-frame video where exactly **Frame #25** has injected synthetic artifacts, while all other 44 frames are pristine).
 - **Execution:** Click button **`3 Single-Frame Tamper (QUARANTINE)`**.
 - **Expected Outcome:**
-  - Exact frame identified: **Frame #25** at timestamp `00:00:01.042` marked **GREEN**.
-  - All 44 surrounding frames marked **RED**.
+  - Exact frame identified: **Frame #25** at timestamp `00:00:01.042` marked **RED**.
+  - All 44 surrounding frames marked **GREEN**.
   - Timeline: Identifies suspicious segment at Frame 25.
-  - Frame Gallery: Side-by-side comparison displays clean Frame #24 (RED) vs tampered Frame #25 (GREEN) vs clean Frame #26 (RED).
+  - Frame Gallery: Side-by-side comparison displays clean Frame #24 (GREEN) vs tampered Frame #25 (RED) vs clean Frame #26 (GREEN).
   - Firewall Decision: **QUARANTINE**.
 
 ### Scenario 4: Uncertain Frame Handling (Fail-Closed)

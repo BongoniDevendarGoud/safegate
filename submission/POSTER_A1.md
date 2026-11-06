@@ -20,9 +20,9 @@
 - **Cards & Panes:** Slate Navy (`#0f172a`) with subtle cyan border glows (`#38bdf8`).
 - **Primary Headers:** Electric Cyan (`#38bdf8`) & Crisp Pure White (`#ffffff`).
 - **Classification Color Palette:**
-  - 🔴 **RED (`#ef4444`):** Legitimate / Authentic Frame.
-  - 🟢 **GREEN (`#22c55e`):** Suspicious / AI-Manipulated Frame.
-  - 🟡 **YELLOW (`#eab308`):** Uncertain Frame.
+  - 🟢 **GREEN (`#22c55e`):** Safe / Legitimate / Authentic Frame.
+  - 🔴 **RED (`#ef4444`):** Morphed / Suspicious / AI-Manipulated / Bad Content.
+  - 🟡 **YELLOW (`#eab308`):** Uncertain / Ambiguous Frame.
 
 ---
 
@@ -40,7 +40,7 @@
 
 ### Column 1: Problem Statement & Protocol Stack
 - **1. Problem Statement & Motivation:**
-  - Weaponized generative AI video synthesis (Diffusion, GANs, face-swapping).
+  - Weaponized generative AI video synthesis (Diffusion, GANs, face-swapping, sexual deepfakes).
   - Web Application Firewalls (WAFs) only examine network packets; video uploads remain uninspected binary payloads.
   - Subsampling vulnerability: 1-2 frames/second scanners miss single-frame temporal splice attacks.
 - **2. Seven-Layer OSI Video Protocol Stack:**
@@ -53,20 +53,21 @@
   - Layer 7: Firewall Policy Gate (ALLOW / QUARANTINE / BLOCK)
 
 ### Column 2: Ingestion Architecture & AI Detection Engine
-- **3. In-Line Firewall Architecture:**
-  - Direct proxy firewall between uploaders and the publishing backend ("SafeTube").
+- **3. In-Line Firewall Architecture & Any-App SDK:**
+  - Direct proxy firewall between uploaders and the publishing backend (demonstrated live with an Instagram social platform interface).
+  - Drop-in SDK for any application (Instagram, TikTok, Video KYC, News CMS) in 3 lines of code.
   - 100% extraction guarantee: 60-second 30 FPS video yields exactly 1,800 decoded frames without frame skipping.
   - Memory-efficient batch streaming via OpenCV & FFmpeg.
 - **4. Strict Frame Color Classification Convention:**
-  - 🔴 RED: Authentic CMOS optical camera capture.
-  - 🟢 GREEN: Deepfake facial anomalies, high JPEG MSE.
+  - 🟢 GREEN: Safe / Authentic CMOS optical camera capture.
+  - 🔴 RED: Morphed / AI-manipulated / face-swap anomalies, high JPEG MSE.
   - 🟡 YELLOW: Inconclusive landmark certainty or underexposure.
 
 ### Column 3: Empirical Benchmark, SOC & Conclusion
 - **5. Experimental Validation (6 Scenarios):**
-  - Scenario 1 (Authentic): 100% RED -> ALLOW -> Published to SafeTube.
-  - Scenario 2 (Deepfake): 45 GREEN -> QUARANTINE -> Blocked from public.
-  - Scenario 3 (Single-Frame): Pinpoints Frame #25 at `00:00:01.042` as GREEN amid 44 RED frames.
+  - Scenario 1 (Authentic): 100% GREEN -> ALLOW -> Published to Social Feed.
+  - Scenario 2 (Deepfake): 45 RED -> QUARANTINE -> Blocked from public.
+  - Scenario 3 (Single-Frame): Pinpoints Frame #25 at `00:00:01.042` as RED amid 44 GREEN frames.
   - Scenario 4 (Uncertain): Marked YELLOW -> QUARANTINE (Fail-closed).
   - Scenario 5 (Corrupted): Malformed bitstream -> BLOCK (Rejected).
   - Scenario 6 (Model Failure): Inference error -> QUARANTINE.

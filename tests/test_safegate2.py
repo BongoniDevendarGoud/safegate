@@ -140,21 +140,21 @@ def test_frame_timestamp_accuracy_and_order(sample_videos):
         assert len(f.sha256_hash) == 64  # Valid 64-char hex SHA-256
 
 
-def test_legitimate_video_marked_red(sample_videos):
+def test_legitimate_video_marked_green(sample_videos):
     """
-    SECTION 6: RED - LEGITIMATE / AUTHENTIC FRAME.
-    Authentic video frames must receive the RED classification marker.
+    GREEN - SAFE / LEGITIMATE / AUTHENTIC FRAME.
+    Clean camera frames must receive the GREEN classification marker.
     """
     video_path = sample_videos["legitimate"]
     result = extract_all_video_frames(
         video_path=video_path,
-        upload_id="test_legit_red",
+        upload_id="test_legit_green",
         save_frames_to_disk=False,
     )
 
     for f in result["frames"]:
         assert f.classification == CLASS_LEGITIMATE
-        assert f.color_marker == COLOR_RED
+        assert f.color_marker == COLOR_GREEN
         assert f.thumbnail_data.startswith("data:image/jpeg;base64,")
 
     assert result["legitimate_frames_count"] == result["total_frames_decoded"]
@@ -162,22 +162,22 @@ def test_legitimate_video_marked_red(sample_videos):
     assert result["risk_score"] < 25
 
 
-def test_deepfake_video_marked_green(sample_videos):
+def test_deepfake_video_marked_red(sample_videos):
     """
-    SECTION 6: GREEN - AI-MANIPULATED / SUSPICIOUS FRAME.
-    Manipulated deepfake frames must receive the GREEN classification marker.
+    RED - MORPHED / SUSPICIOUS / AI-MANIPULATED / BAD CONTENT.
+    Manipulated deepfake frames must receive the RED classification marker.
     """
     video_path = sample_videos["deepfake"]
     result = extract_all_video_frames(
         video_path=video_path,
-        upload_id="test_deepfake_green",
+        upload_id="test_deepfake_red",
         save_frames_to_disk=False,
     )
 
     assert result["suspicious_frames_count"] > 0
     susp_frames = [f for f in result["frames"] if f.classification == CLASS_SUSPICIOUS]
     for sf in susp_frames:
-        assert sf.color_marker == COLOR_GREEN
+        assert sf.color_marker == COLOR_RED
         assert len(sf.detection_evidence) > 0
 
     assert result["risk_score"] >= 60
@@ -185,9 +185,9 @@ def test_deepfake_video_marked_green(sample_videos):
 
 def test_single_ai_modified_frame_detection(sample_videos):
     """
-    SECTION 16 (SCENARIO 3): Single AI-Modified Frame Detection.
-    A video with only 1 modified frame must detect that exact frame (GREEN),
-    mark surrounding frames RED, and trigger QUARANTINE.
+    SCENARIO 3: Single AI-Modified Frame Detection.
+    A video with only 1 modified frame must detect that exact frame (RED),
+    mark surrounding frames GREEN, and trigger QUARANTINE.
     """
     video_path = sample_videos["single_modified"]
     result = extract_all_video_frames(
@@ -202,13 +202,13 @@ def test_single_ai_modified_frame_detection(sample_videos):
     # Frame #25 was tampered
     tampered_frame = next(f for f in frames if f.frame_index == 25)
     assert tampered_frame.classification == CLASS_SUSPICIOUS
-    assert tampered_frame.color_marker == COLOR_GREEN
+    assert tampered_frame.color_marker == COLOR_RED
     assert "Synthetic high-frequency noise" in tampered_frame.detection_evidence
 
-    # Surrounding earlier frames should be legitimate (RED)
+    # Surrounding earlier frames should be legitimate (GREEN)
     for f in frames[:20]:
         assert f.classification == CLASS_LEGITIMATE
-        assert f.color_marker == COLOR_RED
+        assert f.color_marker == COLOR_GREEN
 
     # Crucial policy check: Even 1 suspicious frame escalates overall risk score >= 60!
     assert result["risk_score"] >= 60
@@ -339,11 +339,11 @@ def test_timeline_and_frame_gallery_queries(sample_videos, db_session):
     assert len(timeline["markers"]) > 0
     assert len(timeline["suspicious_segments"]) > 0
 
-    # Frames query (filtered by suspicious/GREEN)
+    # Frames query (filtered by suspicious/RED)
     susp_frames = get_video_frames(upload.id, filter="suspicious", page=1, page_size=20, db=db_session)
     assert susp_frames["total_frames_matching"] > 0
     for f in susp_frames["frames"]:
-        assert f["color_marker"] == COLOR_GREEN
+        assert f["color_marker"] == COLOR_RED
 
     # Single frame inspection with adjacent comparisons
     first_frame_id = susp_frames["frames"][0]["id"]

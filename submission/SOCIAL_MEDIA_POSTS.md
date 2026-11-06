@@ -26,9 +26,10 @@ SafeGate 2.0 rethinks video security by acting as an in-line, zero-trust gateway
 🔹 Complete Frame Extraction: Unlike superficial scanners that sample 1-2 frames/second, SafeGate 2.0 decodes and extracts 100% of video frames via OpenCV and FFmpeg (1,800 frames for a 60-second video at 30 FPS) with SHA-256 fingerprinting.
 🔹 Dual-Engine AI Classification: Combines PyTorch convolutional frequency-domain neural networks with physical forensic heuristics (JPEG compression residual error MSE, Laplacian edge sharpness, and inter-frame color histogram correlation).
 🔹 Strict Forensic Color Convention:
-   🔴 RED: Legitimate / Authentic Optical Frame
-   🟢 GREEN: Suspicious / AI-Manipulated Frame
+   🟢 GREEN: Safe / Legitimate / Authentic Frame
+   🔴 RED: Morphed / Suspicious / AI-Manipulated / Bad Content
    🟡 YELLOW: Uncertain / Ambiguous Frame
+🔹 Embedded Background Firewall: Demonstrated within an Instagram social media clone and packaged as an Any-App SDK for instant 3-line drop-in deployment.
 🔹 Single-Frame Tamper Detection: In our empirical benchmarks, SafeGate successfully pinpointed a single synthetic frame (Frame #25 at 00:00:01.042) hidden among 44 pristine authentic frames.
 🔹 Zero-Trust Publishing Firewall: Enforces an automated ALLOW, QUARANTINE, or BLOCK decision. Quarantined media is strictly blocked from the public feed pending SOC moderator determination.
 🔹 Tamper-Evident SHA-256 Audit Ledger: Cryptographically chained security events ensure full accountability.

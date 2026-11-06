@@ -41,24 +41,22 @@ Detecting sophisticated neural synthesis requires combining deep learning repres
 
 ---
 
-### The Inverted Color Classification Convention
+### Intuitive Color Classification & Forensic Stamping
 
-To provide security analysts with instant visual clarity, SafeGate 2.0 enforces a strict color taxonomy:
+To provide users and platform security analysts with instant visual clarity, SafeGate 2.0 enforces a strict color taxonomy:
 
-- 🔴 **RED (Legitimate / Authentic):** Natural CMOS sensor noise, pristine edge variance, and continuous temporal coherence. Cleared for publication.
-- 🟢 **GREEN (Suspicious / AI-Manipulated):** High compression residuals, abnormal frequency harmonics, or neural synthesis artifacts detected. Flagged for quarantine.
-- 🟡 **YELLOW (Uncertain):** Low lighting, extreme blur, or ambiguous landmark confidence. Retained under fail-closed safety.
-
-*Why inverted?* In forensic signal processing, green denotes positive signal detection (anomaly discovered), whereas red represents baseline ground truth.
+- 🟢 **GREEN (Safe / Legitimate / Authentic):** Natural CMOS sensor noise, pristine edge variance, and continuous temporal coherence. Video cleared for publication to the Instagram feed.
+- 🔴 **RED (Morphed / Deepfake / Sexual / Bad Content):** High compression residuals, abnormal frequency harmonics, synthetic facial artifacts, or policy violations detected. Upload immediately blocked and quarantined.
+- 🟡 **YELLOW (Uncertain):** Low lighting, extreme optical blur, or ambiguous landmark confidence. Retained under fail-closed safety for manual SOC review.
 
 ---
 
 ### Zero-Trust Policy Enforcement
 
 SafeGate 2.0 enforces three automated dispositions:
-- **ALLOW:** 100% of frames are authentic (RED). Media is published immediately to the public platform feed.
-- **QUARANTINE:** Even a single frame is flagged as suspicious (GREEN) or uncertain (YELLOW). Media is quarantined in isolated storage with zero public CDN exposure, awaiting SOC analyst review.
-- **BLOCK:** Prohibited cryptographic signatures or corrupt bitstreams are permanently purged.
+- **ALLOW:** 100% of frames are authentic and safe (GREEN). Media is published immediately to the Instagram feed.
+- **QUARANTINE:** Even a single frame is flagged as morphed/deepfake/bad content (RED) or uncertain (YELLOW). Media is quarantined in isolated storage with zero public CDN exposure, awaiting SOC analyst review.
+- **BLOCK:** Prohibited cryptographic signatures, sexual/illegal content, or corrupt bitstreams are permanently purged.
 
 All pipeline verdicts, frame hashes, and analyst actions are committed to an immutable, HMAC SHA-256 hash-chained audit ledger:
 $$\text{RowHash}_i = \text{SHA256}(\text{RowHash}_{i-1} \parallel \text{UploadID} \parallel \text{Action} \parallel \text{Timestamp})$$

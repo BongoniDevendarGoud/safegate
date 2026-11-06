@@ -82,7 +82,7 @@ To resolve this fundamental architectural blindspot, this Capstone Project conce
 
 Crucially, SafeGate 2.0 eliminates the fatal vulnerability of keyframe subsampling by implementing a **100% Complete Decoded Frame Extraction Engine**. Powered by OpenCV and FFmpeg stream decoding, the engine guarantees that every single frame (e.g. 1,800 frames for a 60-second video at 30 FPS) is extracted, assigned a millisecond-accurate timestamp, and individually fingerprinted with a cryptographic SHA-256 hash. Extracted frames are evaluated via a **Dual-Engine AI Classifier** combining a PyTorch frequency-domain convolutional neural network with physical forensic optical heuristics (JPEG recompression residual MSE, Laplacian edge focus variance, and inter-frame color histogram correlation).
 
-SafeGate 2.0 enforces a strict, inverted forensic color classification convention: **RED** designates Legitimate/Authentic frames, **GREEN** denotes Suspicious/AI-Manipulated frames, and **YELLOW** indicates Uncertain frames. Videos are scored on a composite 0-to-100 risk scale and gated under a strict zero-trust policy: clean videos receive an `ALLOW` decision and are published to the web feed, whereas videos with even one suspicious or ambiguous frame are locked in `QUARANTINE` with zero public CDN exposure. An immutable, HMAC SHA-256 hash-chained audit ledger cryptographically anchors all decisions. Extensive empirical benchmarking across six realistic scenarios demonstrates 100% detection accuracy on full deepfakes and successfully pinpoints single-frame temporal splice attacks (Frame #25 out of 45 frames). SafeGate 2.0 is validated by 74 automated unit, integration, and security tests passing with zero regressions.
+SafeGate 2.0 enforces a strict, intuitive forensic color classification convention: **GREEN** designates Safe / Legitimate / Authentic frames, **RED** denotes Morphed / Suspicious / AI-Manipulated frames or harmful media, and **YELLOW** indicates Uncertain frames. Videos are scored on a composite 0-to-100 risk scale and gated under a strict zero-trust policy: clean videos receive an `ALLOW` decision and are published to the web feed, whereas videos with even one suspicious or ambiguous frame are locked in `QUARANTINE` with zero public CDN exposure. An immutable, HMAC SHA-256 hash-chained audit ledger cryptographically anchors all decisions. Extensive empirical benchmarking across six realistic scenarios demonstrates 100% detection accuracy on full deepfakes and successfully pinpoints single-frame temporal splice attacks (Frame #25 out of 45 frames). SafeGate 2.0 is validated by 74 automated unit, integration, and security tests passing with zero regressions.
 
 ---
 
@@ -135,10 +135,13 @@ SafeGate 2.0 introduces three primary technical pillars:
 - **PyTorch Frequency CNN:** Analyzes high-frequency Fourier residuals where neural synthesis leaves spectral artifacts.
 - **Optical Forensics:** Evaluates compression error residuals, Laplacian edge focus, and inter-frame color histogram continuity.
 
-### 3. Strict Inverted Forensic Color Taxonomy
-- 🔴 **RED:** Legitimate / Authentic Frame (Natural CMOS noise profile).
-- 🟢 **GREEN:** Suspicious / AI-Manipulated Frame (Deepfake facial anomalies).
+### 3. Strict Color Classification Taxonomy
+- 🟢 **GREEN:** Safe / Legitimate / Authentic Frame (Natural CMOS noise profile, pristine optical focus).
+- 🔴 **RED:** Morphed / Suspicious / AI-Manipulated Frame (Deepfake facial anomalies, face swaps, bad content).
 - 🟡 **YELLOW:** Uncertain Frame (Ambiguous / Fail-closed).
+
+### 4. Background Firewall Integration & Any-App SDK
+Rather than operating merely as a detached file scanner, SafeGate 2.0 acts as an invisible background upload firewall embedded within client and host applications. A complete modern Instagram clone demonstrates how user video posts, reels, and stories are screened transparently in the background during the upload workflow, blocking manipulated media before it ever reaches the publishing feed. The provided Any-App SDK allows any web or mobile platform (social media, video KYC, journalism portals) to integrate SafeGate with 3 lines of code.
 
 ---
 
@@ -148,9 +151,9 @@ SafeGate 2.0 was evaluated across 6 rigorous benchmark scenarios:
 
 | Scenario | Extracted Frames | Classification Breakdown | Risk Score | Firewall Verdict | Website Feed Response |
 | :--- | :--- | :--- | :---: | :---: | :--- |
-| **1. Authentic Video** | 45 Decoded | 45 RED (Legitimate) | `0 / 100` | **ALLOW** | Published and playable |
-| **2. Deepfake Video** | 45 Decoded | 45 GREEN (Suspicious) | `92 / 100` | **QUARANTINE** | Blocked from public feed |
-| **3. Single-Frame Tamper** | 45 Decoded | Frame #25 GREEN, 44 RED | `68 / 100` | **QUARANTINE** | Frame #25 pinpointed at `00:01.042` |
+| **1. Authentic Video** | 45 Decoded | 45 GREEN (Safe) | `0 / 100` | **ALLOW** | Published to Instagram feed |
+| **2. Deepfake Video** | 45 Decoded | 45 RED (Morphed) | `92 / 100` | **QUARANTINE** | Blocked with security banner |
+| **3. Single-Frame Tamper** | 45 Decoded | Frame #25 RED, 44 GREEN | `68 / 100` | **QUARANTINE** | Frame #25 pinpointed at `00:01.042` |
 | **4. Uncertain Clarity** | 45 Decoded | 45 YELLOW (Uncertain) | `50 / 100` | **QUARANTINE** | Fail-closed quarantine |
 | **5. Corrupted Stream** | 0 Decoded | Header Failure | `100 / 100` | **BLOCK** | File rejected & purged |
 | **6. AI Model Failure** | 45 Decoded | Inference Exception | N/A | **QUARANTINE** | Refuses to fail open |

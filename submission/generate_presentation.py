@@ -119,19 +119,19 @@ def create_presentation():
             ],
             "notes": "A single model cannot catch every deepfake. We use a dual-engine paradigm: a PyTorch deep learning convolutional neural network paired with physical forensic heuristics."
         },
-        # Slide 7: Strict Visual Color Taxonomy
+        # Slide 7: Visual Color Taxonomy
         {
             "title": "Frame Color Classification Convention",
-            "subtitle": "Strict Forensic Mapping: Inverted for Signal Accuracy",
+            "subtitle": "Intuitive Security Mapping: Green for Safe, Red for Morphed / Bad Content",
             "category": "STANDARDS & CONVENTIONS",
             "bullets": [
-                "RED - Legitimate / Authentic Frame (#ef4444): Natural camera capture, coherent CMOS sensor noise, consistent edge sharpness. System verdict: Safe.",
-                "GREEN - Suspicious / AI-Manipulated Frame (#22c55e): Deepfake facial artifacts, abnormal compression residuals, temporal discontinuities. System verdict: Anomaly Detected.",
+                "GREEN - Safe / Legitimate / Authentic Frame (#22c55e): Natural camera capture, coherent CMOS sensor noise, consistent edge sharpness. Post approved to publish.",
+                "RED - Morphed / Suspicious / AI-Manipulated / Bad Content (#ef4444): Deepfake facial artifacts, abnormal compression residuals, temporal discontinuities, sexual or bad content. Post blocked and quarantined.",
                 "YELLOW - Uncertain Frame (#eab308): Underexposed frames, heavy motion blur, or inconclusive AI confidence. System verdict: Ambiguous / Fail-Closed.",
                 "Visual Stamping: Every extracted frame thumbnail is dynamically stamped with a colored border, uppercase status pill, frame number, and timestamp.",
-                "Forensic Significance: Green signifies a positive anomaly detection signal, while Red represents baseline ground truth."
+                "Intuitive Semantics: Green represents authentic, safe media; Red alerts to morphed, manipulated, or prohibited violations."
             ],
-            "notes": "Please note that the color mapping is intentionally inverted from consumer dashboards: RED represents Legitimate/Authentic, GREEN represents Suspicious/AI anomaly, and YELLOW represents Uncertain."
+            "notes": "Our color mapping enforces intuitive security semantics: GREEN indicates Safe, authentic videos; RED signifies Morphed, manipulated, deepfake, or bad content; and YELLOW represents Uncertain."
         },
         # Slide 8: Video Risk Assessment & Policy Engine
         {
@@ -141,26 +141,26 @@ def create_presentation():
             "bullets": [
                 "Risk Score Formulation: Risk = min(100, (Suspicious_Ratio * 85) + (Uncertain_Ratio * 35) + Max_Anomaly * 20)",
                 "Policy Thresholds:",
-                "  - ALLOW (0 <= Risk < 15): 100% of frames are RED (Legitimate). Zero suspicious or uncertain frames. Media published to website feed.",
-                "  - QUARANTINE (15 <= Risk <= 100): At least 1 frame is GREEN (Suspicious) or YELLOW (Uncertain). Media held in isolated quarantine for SOC moderator review.",
+                "  - ALLOW (0 <= Risk < 15): 100% of frames are GREEN (Safe). Zero morphed or uncertain frames. Media published to website feed.",
+                "  - QUARANTINE (15 <= Risk <= 100): At least 1 frame is RED (Morphed/Bad) or YELLOW (Uncertain). Media held in isolated quarantine for SOC review.",
                 "  - BLOCK: File contains prohibited cryptographic signature, corrupted container bitstream, or explicit banned content. File purged immediately.",
                 "Zero Tolerance: Public users can never access or stream quarantined videos."
             ],
             "notes": "Our composite risk engine combines ratios of suspicious and uncertain frames with peak anomaly scores. Even a single tampered frame immediately locks the video in quarantine."
         },
-        # Slide 9: Demo Video-Sharing Platform (SafeTube)
+        # Slide 9: Instagram Web Interface & In-Line Firewall
         {
-            "title": "Demo Video-Sharing Platform Simulation",
-            "subtitle": "Simulating YouTube / Instagram Ingestion Protection",
+            "title": "Instagram Application Interface & Any-App SDK",
+            "subtitle": "SafeGate Running Seamlessly in the Background of Real Web Apps",
             "category": "FULL-STACK IMPLEMENTATION",
             "bullets": [
-                "Real-World Emulation: Modern, responsive video-sharing feed built with high-performance UI.",
-                "Zero-Trust Gating: Website queries /api/website/videos. Only media with publishing_status == 'published' and verdict == 'ALLOW' is returned.",
-                "Direct Streaming Protection: Stream endpoint /api/website/videos/{id}/stream rejects any quarantined video with HTTP 403 Forbidden.",
-                "Pre-Flight Upload Zone: Creator dropzone with client-side preview, format verification, and asynchronous upload to SafeGate firewall.",
-                "Live Interception Feedback: Users see transparent firewall buffering notifications."
+                "Realistic Instagram Web Interface: High-fidelity Instagram UI with Stories tray, Reels feed, and Create Post/Reel modal.",
+                "Background Firewall Operation: When the user clicks 'Share', SafeGate intercepts and screens the video in the background without needing a separate upload site.",
+                "In-Line Verification Feedback: Real-time screening sheet displays extraction progress, PyTorch analysis, and post verification.",
+                "Zero-Trust Gating: Safe videos (GREEN) are published immediately to the Instagram feed; morphed videos (RED) trigger an in-app security alert and are blocked.",
+                "Any-App Integration SDK: Can be included in any web or mobile application (Instagram, TikTok, banking video KYC, news portals) with a 3-line middleware snippet."
             ],
-            "notes": "To demonstrate real-world impact, we built SafeTube, a video-sharing platform clone. Quarantined videos are strictly prevented from loading or streaming on the public feed."
+            "notes": "SafeGate is not just another upload site. We built an authentic Instagram interface where SafeGate operates in the background as an in-line middleware, proving how it can be integrated into any web application."
         },
         # Slide 10: Real-Time Scanning & Interactive Gallery
         {
@@ -210,9 +210,9 @@ def create_presentation():
             "subtitle": "Comprehensive Benchmark Across Realistic Attack Vectors",
             "category": "EMPIRICAL RESULTS",
             "bullets": [
-                "Scenario 1: Authentic Video -> 100% RED frames -> Risk: 0/100 -> ALLOW (Published to SafeTube feed).",
-                "Scenario 2: Deepfake Video -> 45 GREEN frames -> Risk: 92/100 -> QUARANTINE (Blocked from public feed).",
-                "Scenario 3: Single-Frame Tamper -> Exactly Frame #25 marked GREEN, others RED -> QUARANTINE (Pinpointed).",
+                "Scenario 1: Authentic Video -> 100% GREEN frames (Safe) -> Risk: 0/100 -> ALLOW (Published to Instagram feed).",
+                "Scenario 2: Deepfake Video -> 45 RED frames (Morphed/Bad) -> Risk: 92/100 -> QUARANTINE (Blocked with security alert).",
+                "Scenario 3: Single-Frame Tamper -> Exactly Frame #25 marked RED, 44 others GREEN -> QUARANTINE (Pinpoint caught).",
                 "Scenario 4: Uncertain Clarity -> Low contrast / blur marked YELLOW -> Risk: 50/100 -> QUARANTINE (Fail-closed).",
                 "Scenario 5: Corrupted Stream -> Invalid container bitstream -> BLOCK (Rejected and purged).",
                 "Scenario 6: AI Model Failure -> Simulated inference exception -> QUARANTINE (Refuses to fail open)."

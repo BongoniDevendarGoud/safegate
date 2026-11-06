@@ -94,13 +94,13 @@
 ### Slide 7: Strict Frame Color Classification Convention
 - **Header Category:** STANDARDS & CONVENTIONS
 - **Title:** Frame Color Classification Convention
-- **Subtitle:** Strict Forensic Mapping: Inverted for Signal Accuracy
+- **Subtitle:** Strict Forensic Mapping for Video Security
 - **Content:**
-  - 🔴 RED: Legitimate / Authentic Frame (Natural CMOS sensor noise, pristine edge sharpness).
-  - 🟢 GREEN: Suspicious / AI-Manipulated Frame (Deepfake facial artifacts, high compression residuals).
+  - 🟢 GREEN: Safe / Authentic Frame (Natural CMOS sensor noise, pristine edge sharpness, legitimate).
+  - 🔴 RED: Morphed / Suspicious / Bad Content (Deepfake facial artifacts, high compression residuals, sexual/harmful media).
   - 🟡 YELLOW: Uncertain Frame (Underexposed frames, ambiguous landmark confidence).
   - Visual frame stamping applies colored borders and uppercase badges.
-- **Speaker Notes:** "Please note that the color mapping is intentionally inverted from consumer dashboards: RED represents Legitimate/Authentic, GREEN represents Suspicious/AI anomaly, and YELLOW represents Uncertain."
+- **Speaker Notes:** "We follow the industry-standard visual convention: GREEN represents Safe/Authentic videos, RED represents Morphed, deepfake or bad content, and YELLOW represents Uncertain frames."
 
 ---
 
@@ -110,8 +110,8 @@
 - **Subtitle:** Mathematically Rigorous 0 to 100 Scoring Model
 - **Content:**
   - $\text{Risk Score} = \min(100, (\text{Suspicious\_Ratio} \times 85) + (\text{Uncertain\_Ratio} \times 35) + \text{Max\_Anomaly} \times 20)$
-  - ALLOW: 100% RED frames -> Published to feed.
-  - QUARANTINE: $\ge 1$ GREEN or YELLOW frame -> Isolated for SOC review.
+  - ALLOW: 100% GREEN frames -> Published to feed.
+  - QUARANTINE: $\ge 1$ RED or YELLOW frame -> Isolated for SOC review.
   - BLOCK: Prohibited checksum or malformed bitstream -> Rejected & purged.
 - **Speaker Notes:** "Our composite risk engine combines ratios of suspicious and uncertain frames with peak anomaly scores. Even a single tampered frame immediately locks the video in quarantine."
 

@@ -34,18 +34,22 @@ logger = logging.getLogger(__name__)
 
 
 # -----------------------------------------------------------------------------
-# Classification & Color Constants (Strictly enforced)
+# Classification & Color Constants
+# User Specification:
+# - GREEN:  SAFE / LEGITIMATE / AUTHENTIC VIDEO
+# - RED:    MORPHED / SUSPICIOUS / AI-MANIPULATED / SEXUAL / BAD CONTENT
+# - YELLOW: UNCERTAIN / AMBIGUOUS FRAME
 # -----------------------------------------------------------------------------
 CLASS_LEGITIMATE = "LEGITIMATE"
 CLASS_SUSPICIOUS = "SUSPICIOUS"
 CLASS_UNCERTAIN = "UNCERTAIN"
 
-COLOR_RED = "RED"       # Hex: #ef4444 - For Legitimate frames
-COLOR_GREEN = "GREEN"   # Hex: #22c55e - For Suspicious / AI-manipulated frames
+COLOR_GREEN = "GREEN"   # Hex: #22c55e - For SAFE / Authentic / Legitimate frames
+COLOR_RED = "RED"       # Hex: #ef4444 - For MORPHED / Suspicious / Bad content
 COLOR_YELLOW = "YELLOW" # Hex: #eab308 - For Uncertain frames
 
-BGR_RED = (40, 40, 235)      # OpenCV BGR for RED (Legitimate)
-BGR_GREEN = (45, 190, 45)    # OpenCV BGR for GREEN (Suspicious)
+BGR_GREEN = (45, 190, 45)    # OpenCV BGR for GREEN (Safe / Clean)
+BGR_RED = (40, 40, 235)      # OpenCV BGR for RED (Morphed / Bad)
 BGR_YELLOW = (0, 200, 230)   # OpenCV BGR for YELLOW (Uncertain)
 
 
@@ -342,9 +346,9 @@ class SafeGateAIEngine:
         rgb_frame = cv2.cvtColor(bgr_frame, cv2.COLOR_BGR2RGB)
         ai_res = self.neural_classifier.predict_frame(rgb_frame)
 
-        # 3. Decision Matrix for Color Marking
+        # 3. Decision Matrix for Color Marking (GREEN = Safe, RED = Morphed / Bad, YELLOW = Uncertain)
         classification = CLASS_LEGITIMATE
-        color_marker = COLOR_RED
+        color_marker = COLOR_GREEN
         evidence_list = []
         uncertainty_reason = None
         anomaly_score = 0.0
@@ -366,7 +370,7 @@ class SafeGateAIEngine:
             uncertainty_reason = f"Low-contrast / severe optical blur prevented definitive forensic determination (Laplacian: {lap_var:.1f})"
             evidence_list.append("Inconclusive frame clarity")
 
-        # Check for Synthetic / Deepfake Artifacts -> GREEN (SUSPICIOUS)
+        # Check for Synthetic / Deepfake Artifacts -> RED (MORPHED / BAD CONTENT)
         else:
             is_suspicious = False
 
@@ -396,12 +400,12 @@ class SafeGateAIEngine:
 
             if is_suspicious:
                 classification = CLASS_SUSPICIOUS
-                color_marker = COLOR_GREEN
+                color_marker = COLOR_RED
                 anomaly_score = min(99.9, max(55.0, anomaly_score))
                 confidence = min(99.4, round(65.0 + (comp_mse * 0.3) + max(0.0, (1.0 - corr) * 20.0), 1))
             else:
                 classification = CLASS_LEGITIMATE
-                color_marker = COLOR_RED
+                color_marker = COLOR_GREEN
                 anomaly_score = max(1.5, round(comp_mse * 0.8, 1))
                 confidence = min(99.9, round(max(88.0, 100.0 - (comp_mse * 1.1)), 1))
                 evidence_list.append("Natural optical sensor noise, consistent edge gradients, and temporal coherence")
@@ -411,23 +415,27 @@ class SafeGateAIEngine:
         model_verdict_str = ai_res.get("raw_verdict", "Authentic Visual Representation")
 
         # 4. Generate visually stamped thumbnail honoring EXACT color convention
+        # GREEN = Safe / Authentic, RED = Morphed / Suspicious / Bad, YELLOW = Uncertain
         thumb = cv2.resize(bgr_frame, thumbnail_dims, interpolation=cv2.INTER_AREA)
         h_th, w_th = thumb.shape[:2]
         stamped_thumb = thumb.copy()
 
         # Apply specific color border and label
-        if color_marker == COLOR_RED:
-            # RED BORDER FOR LEGITIMATE
-            cv2.rectangle(stamped_thumb, (0, 0), (w_th - 1, h_th - 1), BGR_RED, 4)
-            cv2.rectangle(stamped_thumb, (6, 6), (120, 28), BGR_RED, -1)
-            cv2.putText(stamped_thumb, "LEGITIMATE", (12, 22), cv2.FONT_HERSHEY_SIMPLEX, 0.42, (255, 255, 255), 1, cv2.LINE_AA)
-        elif color_marker == COLOR_GREEN:
-            # GREEN BORDER FOR SUSPICIOUS / AI-MANIPULATED
+        if color_marker == COLOR_GREEN:
+            # GREEN BORDER FOR SAFE / AUTHENTIC VIDEO
             cv2.rectangle(stamped_thumb, (0, 0), (w_th - 1, h_th - 1), BGR_GREEN, 4)
-            cv2.rectangle(stamped_thumb, (6, 6), (155, 28), BGR_GREEN, -1)
-            cv2.putText(stamped_thumb, "SUSPICIOUS (AI)", (10, 22), cv2.FONT_HERSHEY_SIMPLEX, 0.40, (255, 255, 255), 1, cv2.LINE_AA)
+            cv2.rectangle(stamped_thumb, (6, 6), (150, 28), BGR_GREEN, -1)
+            cv2.putText(stamped_thumb, "SAFE (VERIFIED)", (12, 22), cv2.FONT_HERSHEY_SIMPLEX, 0.40, (255, 255, 255), 1, cv2.LINE_AA)
+        elif color_marker == COLOR_RED:
+            # RED BORDER FOR MORPHED / SUSPICIOUS / BAD CONTENT
+            cv2.rectangle(stamped_thumb, (0, 0), (w_th - 1, h_th - 1), BGR_RED, 4)
+            cv2.rectangle(stamped_thumb, (6, 6), (155, 28), BGR_RED, -1)
+            cv2.putText(stamped_thumb, "MORPHED / BAD", (10, 22), cv2.FONT_HERSHEY_SIMPLEX, 0.40, (255, 255, 255), 1, cv2.LINE_AA)
         else:
             # YELLOW BORDER FOR UNCERTAIN
+            cv2.rectangle(stamped_thumb, (0, 0), (w_th - 1, h_th - 1), BGR_YELLOW, 4)
+            cv2.rectangle(stamped_thumb, (6, 6), (115, 28), BGR_YELLOW, -1)
+            cv2.putText(stamped_thumb, "UNCERTAIN", (12, 22), cv2.FONT_HERSHEY_SIMPLEX, 0.42, (0, 0, 0), 1, cv2.LINE_AA)
             cv2.rectangle(stamped_thumb, (0, 0), (w_th - 1, h_th - 1), BGR_YELLOW, 4)
             cv2.rectangle(stamped_thumb, (6, 6), (115, 28), BGR_YELLOW, -1)
             cv2.putText(stamped_thumb, "UNCERTAIN", (12, 22), cv2.FONT_HERSHEY_SIMPLEX, 0.42, (0, 0, 0), 1, cv2.LINE_AA)
