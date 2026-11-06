@@ -242,6 +242,33 @@
             </div>
           </div>
 
+          <!-- Video Selector Bar for Fast Multi-Video Inspection -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; background: #16181c; padding: 12px 16px; border-radius: 10px; border: 1px solid var(--ig-border); flex-wrap: wrap; gap: 10px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <span style="font-weight: 700; font-size: 13px; color: #fff;">Inspected Video:</span>
+              <select id="consoleVideoSelect" onchange="onConsoleVideoSelectChanged(this.value)" style="background: #262626; color: #fff; border: 1px solid var(--ig-border); padding: 6px 12px; border-radius: 6px; font-size: 13px; min-width: 280px;">
+                <option value="">Select a video to inspect...</option>
+              </select>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button class="btn-scenario-action scen-safe" onclick="playCurrentInspectedVideo()">
+                <span>▶</span> Play Video (Cross-Check)
+              </button>
+              <button class="btn-scenario-action" onclick="refreshConsoleVideos()">
+                <span>↻</span> Refresh Scans
+              </button>
+            </div>
+          </div>
+
+          <!-- Video Player Dialog for Cross-Checking Scanned Video -->
+          <div id="consoleVideoPlayerBox" style="display: none; margin-bottom: 20px; background: #000; border-radius: 10px; overflow: hidden; border: 1px solid var(--firewall-cyan); padding: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span style="font-size: 12px; font-weight: 700; color: var(--firewall-cyan);" id="consoleVideoPlayerTitle">Video Playback Cross-Check</span>
+              <button class="btn-scenario-action" style="padding: 2px 8px; font-size: 11px;" onclick="document.getElementById('consoleVideoPlayerBox').style.display = 'none'; document.getElementById('consoleVideoElem').pause();">✕ Close Player</button>
+            </div>
+            <video id="consoleVideoElem" controls playsinline style="width: 100%; max-height: 380px; background: #000; border-radius: 6px;"></video>
+          </div>
+
           <!-- Interactive Scrubber & Timeline -->
           <div class="timeline-track-box">
             <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -461,7 +488,25 @@ export function CreatePostModal() {
             </div>
           </div>
 
-          <video id="modalVideoPlayer" controls class="modal-preview-video" style="display: none;"></video>
+          <!-- Video Playback & Cross-Check Container -->
+          <div id="playerPreviewContainer" style="display: none; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; position: relative;">
+            <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding: 0 4px;">
+              <span style="font-size: 12px; font-weight: 700; color: #4ade80; display: flex; align-items: center; gap: 6px;">
+                <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #4ade80;"></span>
+                Video Playback &amp; Verification Cross-Check
+              </span>
+              <button class="btn-scenario-action" style="padding: 3px 10px; font-size: 11px;" onclick="resetUploadMedia()">
+                ↺ Change Video
+              </button>
+            </div>
+            <div style="width: 100%; flex: 1; min-height: 280px; max-height: 400px; background: #000; border-radius: 10px; overflow: hidden; position: relative; display: flex; align-items: center; justify-content: center; border: 1px solid var(--ig-border);">
+              <video id="modalVideoPlayer" controls playsinline preload="auto" class="modal-preview-video" style="width: 100%; height: 100%; object-fit: contain;"></video>
+            </div>
+            <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--ig-muted); margin-top: 8px; font-family: var(--mono-family);">
+              <span id="previewVideoName">selected-video.mp4</span>
+              <span>Use controls above to play, pause, or seek</span>
+            </div>
+          </div>
         </div>
 
         <!-- Right: Post Details & 1-Click Quick Evaluator Presets -->
@@ -544,11 +589,19 @@ export function CreatePostModal() {
     <div class="ig-create-modal-card" style="max-width: 900px; height: 620px;">
       <div class="ig-modal-header">
         <span class="ig-modal-title" id="frameDetailTitle">Frame Inspection</span>
-        <button class="ig-modal-close-btn" onclick="closeFrameDetailModal()">&times;</button>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <button class="btn-scenario-action" style="padding: 3px 8px; font-size: 11px;" onclick="navigateDetailFrame(-1)">◀ Prev</button>
+          <button class="btn-scenario-action" style="padding: 3px 8px; font-size: 11px;" onclick="navigateDetailFrame(1)">Next ▶</button>
+          <button class="btn-scenario-action scen-morphed" style="padding: 3px 8px; font-size: 11px;" onclick="jumpNextMorphedFrame()">Next Morphed 🔴</button>
+          <button class="ig-modal-close-btn" onclick="closeFrameDetailModal()">&times;</button>
+        </div>
       </div>
       <div class="ig-modal-body-split">
-        <div style="flex: 1.3; background: #000; display: flex; align-items: center; justify-content: center; padding: 10px;">
-          <img id="detailFrameImg" src="" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+        <div style="flex: 1.3; background: #000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px; position: relative;">
+          <img id="detailFrameImg" src="" style="max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px;" onerror="this.src=this.src.replace('/image', '/thumbnail');">
+          <div id="detailFrameOverlay" style="position: absolute; bottom: 16px; left: 16px; background: rgba(0,0,0,0.75); padding: 4px 10px; border-radius: 6px; font-size: 11px; color: #fff; font-family: var(--mono-family);">
+            Frame Content Loaded
+          </div>
         </div>
         <div style="flex: 1; padding: 18px; background: #16181c; overflow-y: auto;">
           <div id="detailVerdictBadge" style="display: inline-block; padding: 4px 10px; border-radius: 8px; font-weight: 800; font-size: 12px; margin-bottom: 12px;"></div>

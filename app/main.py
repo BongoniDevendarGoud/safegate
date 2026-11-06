@@ -99,6 +99,15 @@ async def health():
     return {"status": "ok", "service": "safegate", "version": "0.1.0"}
 
 
+# Register static mounts for samples, frames, and dashboard
+samples_path = Path(__file__).resolve().parent.parent / "samples"
+samples_path.mkdir(parents=True, exist_ok=True)
+app.mount("/samples", StaticFiles(directory=str(samples_path)), name="samples")
+
+frames_dir = settings.frames_path
+frames_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/frames", StaticFiles(directory=str(frames_dir)), name="frames")
+
 # Serve static dashboard files
 dashboard_path = Path(__file__).resolve().parent.parent / "dashboard"
 dashboard_path.mkdir(parents=True, exist_ok=True)

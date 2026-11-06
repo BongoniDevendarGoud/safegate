@@ -997,6 +997,26 @@ def stream_published_video(video_id: str, db: Session = Depends(get_db)):
     return FileResponse(video_file, media_type="video/mp4")
 
 
+@router.get("/admin/videos/{video_id}/stream")
+def stream_quarantined_video(video_id: str, db: Session = Depends(get_db)):
+    """Streams quarantined or review video for authorized administrator inspection."""
+    upload = db.query(Upload).filter(Upload.id == video_id).first()
+    if not upload:
+        raise HTTPException(status_code=404, detail="Video record not found")
+
+    for p in [settings.review_path, settings.quarantine_path, settings.published_path]:
+        cand = p / upload.stored_filename
+        if cand.exists():
+            return FileResponse(cand, media_type="video/mp4")
+
+    for name in ["scenario1_legitimate.mp4", "scenario2_deepfake.mp4", "scenario3_single_modified.mp4", "scenario4_uncertain.mp4"]:
+        cand = Path(__file__).resolve().parent.parent.parent / "samples" / name
+        if cand.name == upload.original_filename and cand.exists():
+            return FileResponse(cand, media_type="video/mp4")
+
+    raise HTTPException(status_code=404, detail="Media file not found")
+
+
 # =============================================================================
 # 9. END-TO-END DEMONSTRATION SCENARIOS (SECTIONS 16)
 # =============================================================================
