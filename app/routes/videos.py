@@ -503,7 +503,7 @@ def get_video_frames(
     video_id: str,
     filter: str = Query("all", description="Filter: 'all', 'legitimate', 'suspicious', 'uncertain'"),
     page: int = Query(1, ge=1),
-    page_size: int = Query(60, ge=1, le=500),
+    page_size: int = Query(100, ge=1, le=5000),
     db: Session = Depends(get_db),
 ):
     upload = db.query(Upload).filter(Upload.id == video_id).first()
@@ -513,9 +513,9 @@ def get_video_frames(
     query = db.query(VideoFrame).filter(VideoFrame.upload_id == video_id)
 
     filter_lower = filter.strip().lower()
-    if filter_lower in ("legit", "legitimate", "red"):
+    if filter_lower in ("legit", "legitimate", "green", "safe", "authentic"):
         query = query.filter(VideoFrame.classification == CLASS_LEGITIMATE)
-    elif filter_lower in ("susp", "suspicious", "green"):
+    elif filter_lower in ("susp", "suspicious", "red", "morphed", "bad", "deepfake", "restricted"):
         query = query.filter(VideoFrame.classification == CLASS_SUSPICIOUS)
     elif filter_lower in ("uncert", "uncertain", "yellow"):
         query = query.filter(VideoFrame.classification == CLASS_UNCERTAIN)
@@ -619,7 +619,7 @@ def get_single_frame(
     }
 
 
-@router.get("/videos/{video_id}/frames/{frame_id}/image")
+@router.api_route("/videos/{video_id}/frames/{frame_id}/image", methods=["GET", "HEAD"])
 def get_frame_image(video_id: str, frame_id: str, db: Session = Depends(get_db)):
     """Serves the full-resolution frame image file."""
     vf = db.query(VideoFrame).filter(VideoFrame.id == frame_id, VideoFrame.upload_id == video_id).first()
@@ -631,7 +631,7 @@ def get_frame_image(video_id: str, frame_id: str, db: Session = Depends(get_db))
     return FileResponse(vf.frame_file_path, media_type="image/jpeg")
 
 
-@router.get("/videos/{video_id}/frames/{frame_id}/thumbnail")
+@router.api_route("/videos/{video_id}/frames/{frame_id}/thumbnail", methods=["GET", "HEAD"])
 def get_frame_thumbnail(video_id: str, frame_id: str, db: Session = Depends(get_db)):
     """Serves the stamped thumbnail image file."""
     vf = db.query(VideoFrame).filter(VideoFrame.id == frame_id, VideoFrame.upload_id == video_id).first()
@@ -1120,6 +1120,14 @@ def run_demonstration_scenario(scenario_id: int, db: Session = Depends(get_db)):
             "scenario_id": scenario_id,
             "scenario_name": scenario_names[scenario_id],
             "video_id": upload_record.id,
+            "verdict": scan_res.get("verdict"),
+            "risk_score": scan_res.get("risk_score"),
+            "total_frames": scan_res.get("total_frames"),
+            "legitimate_frames": scan_res.get("legitimate_frames_count"),
+            "suspicious_frames": scan_res.get("suspicious_frames_count"),
+            "uncertain_frames": scan_res.get("uncertain_frames_count"),
+            "publishing_status": scan_res.get("publishing_status"),
+            "explanation": scan_res.get("explanation"),
             "scan_result": scan_res,
         }
     finally:

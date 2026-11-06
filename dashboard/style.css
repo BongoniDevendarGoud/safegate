@@ -1178,15 +1178,19 @@ body {
 }
 
 .frame-inspect-card.border-safe {
-  border: 2px solid var(--safe-green);
+  border: 2.5px solid var(--safe-green) !important;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.2);
 }
 
 .frame-inspect-card.border-morphed {
-  border: 2px solid var(--morphed-red);
+  border: 2.5px solid var(--morphed-red) !important;
+  box-shadow: 0 0 14px rgba(239, 68, 68, 0.5);
+  background-color: rgba(239, 68, 68, 0.05);
 }
 
 .frame-inspect-card.border-uncertain {
-  border: 2px solid var(--uncertain-yellow);
+  border: 2.5px solid var(--uncertain-yellow) !important;
+  box-shadow: 0 0 8px rgba(234, 179, 8, 0.25);
 }
 
 .frame-img-box {

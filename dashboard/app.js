@@ -408,6 +408,10 @@ async function triggerInstagramShare() {
     scSafe.innerText = `🟢 Safe Frames: ${safeFrames}`;
     scMorphed.innerText = `🔴 Morphed / Bad: ${morphedFrames}`;
 
+    // Immediately extract & render frames for the present video
+    await loadVideoFramesForConsole(result.video_id);
+    await loadTimelineForConsole(result.video_id);
+
     if (verdict === 'ALLOW') {
       // 🟢 SUCCESS: Safe video passes firewall
       stageText.innerText = `✓ Clean Verification Passed! All ${totalFrames} frames verified authentic (GREEN).`;
@@ -415,14 +419,14 @@ async function triggerInstagramShare() {
         closeCreateModal();
         loadInstagramFeed();
         loadConsoleDashboard();
-      }, 1200);
+      }, 1600);
 
     } else {
       // 🔴 MORPHED / DEEPFAKE / BAD CONTENT BLOCKED
       stageText.innerText = `🚫 Post Blocked: Detected ${morphedFrames} morphed/AI-manipulated frame(s) (RED).`;
       if (blockedBox) {
         document.getElementById('screeningBlockedDesc').innerHTML = `
-          SafeGate in-line firewall intercepted <strong>${morphedFrames} morphed or synthetic frame(s)</strong> (marked 🔴 <strong>RED</strong>). 
+          SafeGate in-line firewall intercepted <strong>${morphedFrames} morphed, deepfake, or bad frame(s)</strong> (marked 🔴 <strong>RED</strong>). 
           This post violates media authenticity guidelines and has been <strong>blocked from publishing</strong> to your Instagram feed.
         `;
         blockedBox.style.display = 'block';
@@ -462,56 +466,25 @@ async function refreshConsoleVideos() {
   if (!select) return;
 
   try {
-    const [pubRes, adminRes] = await Promise.all([
-      fetch('/api/website/videos').catch(() => null),
-      fetch('/api/admin/dashboard').catch(() => null)
-    ]);
+    const res = await fetch('/api/admin/videos?limit=100');
+    if (!res.ok) return;
+    const data = await res.json();
+    const videos = data.videos || [];
 
-    const pubData = pubRes && pubRes.ok ? await pubRes.json() : { videos: [] };
-    const adminData = adminRes && adminRes.ok ? await adminRes.json() : { quarantine_queue: [], recent_scans: [] };
-
-    const map = new Map();
-    (pubData.videos || []).forEach(v => map.set(v.video_id, {
-      id: v.video_id,
-      title: v.title || v.original_filename || 'Published Post',
-      verdict: v.verdict || 'ALLOW',
-      frames: v.total_frames || 0,
-      status: 'published'
-    }));
-
-    (adminData.quarantine_queue || []).forEach(v => map.set(v.video_id, {
-      id: v.video_id,
-      title: v.title || v.original_filename || 'Quarantined Upload',
-      verdict: v.verdict || 'QUARANTINE',
-      frames: v.total_frames || 0,
-      status: 'quarantined'
-    }));
-
-    (adminData.recent_scans || []).forEach(v => {
-      if (!map.has(v.video_id)) {
-        map.set(v.video_id, {
-          id: v.video_id,
-          title: v.title || v.original_filename || 'Scanned Video',
-          verdict: v.verdict || 'ALLOW',
-          frames: v.total_frames || 0,
-          status: v.publishing_status || 'scanned'
-        });
-      }
-    });
-
-    const videos = Array.from(map.values());
     if (videos.length === 0) {
       select.innerHTML = '<option value="">No scanned videos found</option>';
       return;
     }
 
     select.innerHTML = videos.map(v => {
-      const icon = v.verdict === 'ALLOW' ? '🟢' : '🔴';
-      return `<option value="${v.id}">${icon} ${escapeHtml(v.title)} (${v.frames} frames) [${v.verdict}]</option>`;
+      const isAllowed = v.verdict === 'ALLOW';
+      const icon = isAllowed ? '🟢' : '🔴';
+      const title = v.title || v.original_filename || 'Video Upload';
+      return `<option value="${v.id}">${icon} ${escapeHtml(title)} (${v.total_frames || 0} frames) [${v.verdict}]</option>`;
     }).join('');
 
-    // If active video exists in map, select it; otherwise select first
-    if (AppState.currentVideoId && map.has(AppState.currentVideoId)) {
+    // If active video exists in database, select it; otherwise default to most recent (first)
+    if (AppState.currentVideoId && videos.some(v => v.id === AppState.currentVideoId)) {
       select.value = AppState.currentVideoId;
     } else if (videos.length > 0) {
       AppState.currentVideoId = videos[0].id;
@@ -527,13 +500,54 @@ async function refreshConsoleVideos() {
   }
 }
 
+function renderScreeningFramesStrip(frames, videoId) {
+  const box = document.getElementById('screeningFramesStripBox');
+  const countEl = document.getElementById('screeningFrameCount');
+  const strip = document.getElementById('screeningFramesStrip');
+  if (!box || !strip || !frames || frames.length === 0) return;
+
+  if (countEl) countEl.innerText = frames.length;
+  box.style.display = 'block';
+
+  strip.innerHTML = frames.map(f => {
+    const cls = (f.classification || '').toLowerCase();
+    const isMorphed = cls.includes('susp') || cls.includes('morph') || cls.includes('deepfake');
+    const isUncert = cls.includes('uncert');
+    const isSafe = !isMorphed && !isUncert;
+
+    const borderColor = isMorphed ? '#ef4444' : (isUncert ? '#eab308' : '#22c55e');
+    const badgeText = isMorphed ? '🔴 RED' : (isUncert ? '🟡 YEL' : '🟢 GRN');
+    const frameId = f.id || f.frame_id;
+    let thumb = f.thumbnail_url;
+    if (!thumb && videoId && frameId) {
+      thumb = `/api/videos/${videoId}/frames/${frameId}/thumbnail`;
+    }
+    if (!thumb && videoId && f.frame_index) {
+      thumb = `/frames/${videoId}/thumb_${String(f.frame_index).padStart(6, '0')}.jpg`;
+    }
+    const fallback = videoId && frameId 
+      ? `/api/videos/${videoId}/frames/${frameId}/image` 
+      : (videoId && f.frame_index ? `/frames/${videoId}/frame_${String(f.frame_index).padStart(6, '0')}.jpg` : '');
+
+    return `
+      <div style="flex: 0 0 92px; height: 105px; border-radius: 6px; border: 2px solid ${borderColor}; background: #000; overflow: hidden; position: relative; cursor: pointer;"
+           title="Frame #${f.frame_index} (${(f.timestamp_sec||0).toFixed(3)}s) - Click to inspect"
+           onclick="openFrameDetailModal(${f.frame_index})">
+        <img src="${thumb || fallback}" style="width: 100%; height: 75px; object-fit: cover;" loading="lazy" onerror="this.src='${fallback}';">
+        <div style="padding: 2px 4px; font-size: 9px; font-weight: 700; color: ${borderColor}; text-align: center; background: #16181c; font-family: var(--mono-family);">
+          #${f.frame_index} ${badgeText}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
 function onConsoleVideoSelectChanged(videoId) {
   if (!videoId) return;
   AppState.currentVideoId = videoId;
   loadVideoFramesForConsole(videoId);
   loadTimelineForConsole(videoId);
 
-  // If player is open, update video player source
   const playerBox = document.getElementById('consoleVideoPlayerBox');
   if (playerBox && playerBox.style.display !== 'none') {
     playCurrentInspectedVideo();
@@ -556,7 +570,6 @@ function playCurrentInspectedVideo() {
   box.style.display = 'block';
   if (title) title.innerText = `Playback Verification Cross-Check — Video ID: ${videoId}`;
 
-  // Try admin stream first (allows playing both quarantined and published), fallback to website stream
   player.src = `/api/admin/videos/${videoId}/stream`;
   player.onerror = () => {
     player.src = `/api/website/videos/${videoId}/stream`;
@@ -572,7 +585,7 @@ async function loadVideoFramesForConsole(videoId) {
   if (countEl) countEl.innerText = "...";
 
   try {
-    const res = await fetch(`/api/videos/${videoId}/frames?page_size=1000`);
+    const res = await fetch(`/api/videos/${videoId}/frames?page_size=500`);
     if (!res.ok) return;
     const data = await res.json();
     AppState.currentFrames = (data.frames || []).map(f => ({
@@ -581,6 +594,7 @@ async function loadVideoFramesForConsole(videoId) {
       upload_id: f.upload_id || videoId
     }));
     renderConsoleGallery();
+    renderScreeningFramesStrip(AppState.currentFrames, videoId);
   } catch (err) {
     console.error('Error loading frames:', err);
   }

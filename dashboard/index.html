@@ -561,6 +561,19 @@ export function CreatePostModal() {
           <span class="sc-pill pill-red" id="scPillMorphed">🔴 Morphed / Bad: 0</span>
         </div>
 
+        <!-- Live Extracted Frames Preview Strip inside Screening Sheet -->
+        <div id="screeningFramesStripBox" style="width: 100%; margin-top: 14px; display: none; text-align: left;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="font-size: 12px; font-weight: 700; color: #fff;">
+              Decoded Video Frames (<span id="screeningFrameCount">0</span> frames classified):
+            </span>
+            <span style="font-size: 11px; color: var(--ig-muted);">Click any frame to inspect details</span>
+          </div>
+          <div id="screeningFramesStrip" style="display: flex; gap: 8px; overflow-x: auto; padding: 6px 2px; max-height: 140px; scrollbar-width: thin;">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
         <!-- Blocked / Morphed Alert Message Box (Shown if Morphed/Bad) -->
         <div id="screeningBlockedBox" class="screening-blocked-box" style="display: none;">
           <div class="blocked-title">
