@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "cleanUrls": true,
+  "routes": [
+    { "src": "/", "dest": "/dashboard/index.html" },
+    { "src": "/dashboard/(.*)", "dest": "/dashboard/$1" },
+    { "src": "/samples/(.*)", "dest": "/dashboard/samples/$1" },
+    { "src": "/(.*)", "dest": "/dashboard/$1" }
+  ]
+}
