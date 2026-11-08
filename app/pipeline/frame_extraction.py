@@ -1,18 +1,7 @@
 """
 SafeGate — Frame Extraction Module (Pipeline Stage 3)
 ======================================================
-Extracts representative visual frames from quarantined videos using OpenCV:
-
-ALGORITHM:
-1. Opens video using `cv2.VideoCapture`.
-2. Computes total frame count, FPS, and duration in seconds.
-3. Targets:
-   - First frame (0.0 seconds)
-   - Every N seconds based on FRAME_INTERVAL_SEC (default 2 seconds)
-   - Last available frame
-4. Capped at MAX_FRAMES (default 60) to prevent CPU/memory denial-of-service.
-5. Normalization: Resizes each extracted frame to (640, 480) and converts
-   OpenCV's native BGR color channel format to RGB for PIL / model compatibility.
+Extracts representative visual frames from quarantined videos using OpenCV.
 
 FAIL-CLOSED BEHAVIOR:
 If OpenCV fails to open the video file or cannot decode valid frames,
@@ -21,10 +10,12 @@ a ValueError is raised so the orchestrator routes the file to REVIEW.
 
 import logging
 from pathlib import Path
-from typing import List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
+
 import cv2
 import numpy as np
 from PIL import Image
+
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -36,21 +27,7 @@ def extract_video_frames(
     max_frames: int = None,
     resize_dims: Tuple[int, int] = None,
 ) -> List[Tuple[float, Image.Image]]:
-    """
-    Extracts temporally distributed frames from a video file on disk.
-
-    Args:
-        video_path: Path to the video in quarantine.
-        interval_sec: Step size between frames in seconds (default: settings.FRAME_INTERVAL_SEC).
-        max_frames: Maximum number of frames returned (default: settings.MAX_FRAMES).
-        resize_dims: (width, height) to resize frames to (default: settings.FRAME_RESIZE).
-
-    Returns:
-        List of (timestamp_in_seconds, PIL.Image) tuples.
-
-    Raises:
-        ValueError: If the video cannot be opened, has 0 frames, or decoding fails.
-    """
+    """Extract temporally distributed frames from a video file on disk."""
     if interval_sec is None:
         interval_sec = settings.FRAME_INTERVAL_SEC
     if max_frames is None:
@@ -58,79 +35,54 @@ def extract_video_frames(
     if resize_dims is None:
         resize_dims = settings.FRAME_RESIZE
 
-    str_path = str(video_path.resolve())
-    cap = cv2.VideoCapture(str_path)
-
+    cap = cv2.VideoCapture(str(video_path.resolve()))
     if not cap.isOpened():
         raise ValueError(f"Corrupted or unsupported video stream: unable to open '{video_path.name}'")
 
     try:
         fps = cap.get(cv2.CAP_PROP_FPS)
         total_frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-
-        # Defense against broken or variable frame-rate headers
         if fps <= 0 or total_frame_count <= 0:
             raise ValueError(f"Invalid video metadata: fps={fps}, total_frames={total_frame_count}")
 
         duration_sec = total_frame_count / fps
         frame_step = max(1, int(fps * interval_sec))
-
         logger.info(
             "Stage 3 Frame Extraction: %s (fps=%.2f, total_frames=%d, duration=%.2fs, step=%d)",
-            video_path.name, fps, total_frame_count, duration_sec, frame_step
+            video_path.name, fps, total_frame_count, duration_sec, frame_step,
         )
 
-        target_frame_indices = set()
-        # 1. First frame (index 0)
-        target_frame_indices.add(0)
-
-        # 2. Every interval_sec
+        target_frame_indices = {0}
         curr = 0
         while curr < total_frame_count:
             target_frame_indices.add(curr)
             curr += frame_step
-
-        # 3. Last frame
         if total_frame_count > 1:
             target_frame_indices.add(total_frame_count - 1)
 
-        # Sort indices chronologically
         sorted_indices = sorted(target_frame_indices)
-
-        # Cap at max_frames if video is very long
         if len(sorted_indices) > max_frames:
-            # Subsample evenly across the list
             step = len(sorted_indices) / max_frames
             sorted_indices = [sorted_indices[int(i * step)] for i in range(max_frames)]
 
         extracted_frames: List[Tuple[float, Image.Image]] = []
-
         for frame_idx in sorted_indices:
             cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
             success, bgr_frame = cap.read()
-
             if not success or bgr_frame is None:
                 logger.warning("Failed to decode frame at index %d in %s", frame_idx, video_path.name)
                 continue
 
-            # Calculate actual timestamp
             timestamp = round(frame_idx / fps, 3)
-
-            # Resize to safe resolution (width, height)
             resized = cv2.resize(bgr_frame, resize_dims, interpolation=cv2.INTER_AREA)
-
-            # Convert BGR (OpenCV) -> RGB (PIL/PyTorch)
             rgb_frame = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
-            pil_img = Image.fromarray(rgb_frame)
-
-            extracted_frames.append((timestamp, pil_img))
+            extracted_frames.append((timestamp, Image.fromarray(rgb_frame)))
 
         if not extracted_frames:
             raise ValueError(f"Fail-closed: No readable visual frames could be decoded from '{video_path.name}'")
 
         logger.info("Stage 3 SUCCESS: Extracted %d frames from %s", len(extracted_frames), video_path.name)
         return extracted_frames
-
     finally:
         cap.release()
 
@@ -141,23 +93,10 @@ def extract_24fps_frames_with_meta(
     max_frames: int = 96,
     thumbnail_dims: Tuple[int, int] = (240, 180),
 ) -> List[Dict[str, Any]]:
-    """
-    Extracts high-resolution 24 FPS temporal frames with rich metadata and base64 thumbnails.
-    Extracts exactly 24 frames per second across video duration (bounded to max_seconds).
-    
-    Args:
-        video_path: Path to target video file.
-        max_seconds: Maximum seconds of video to process at 24fps (default: 4 seconds = 96 frames max).
-        max_frames: Upper bound cap on extracted frames.
-        thumbnail_dims: (width, height) for frontend thumbnail rendering.
-        
-    Returns:
-        List of dicts containing frame indices, timestamps, numpy BGR frames, PIL Images, and base64 thumbnails.
-    """
+    """Extract high-resolution 24 FPS temporal frames with metadata and thumbnails."""
     import base64
 
-    str_path = str(video_path.resolve())
-    cap = cv2.VideoCapture(str_path)
+    cap = cv2.VideoCapture(str(video_path.resolve()))
     if not cap.isOpened():
         raise ValueError(f"Unable to open video stream: '{video_path.name}'")
 
@@ -169,7 +108,6 @@ def extract_24fps_frames_with_meta(
 
         duration_sec = total_frames / fps
         process_seconds = max(1, min(int(np.ceil(duration_sec)), max_seconds))
-
         results = []
         global_idx = 1
 
@@ -177,36 +115,27 @@ def extract_24fps_frames_with_meta(
             for sub_idx in range(24):
                 if len(results) >= max_frames:
                     break
-
                 target_time = sec + (sub_idx / 24.0)
                 if target_time > duration_sec and results:
                     break
-
                 target_frame_num = int(round(target_time * fps))
                 if target_frame_num >= total_frames:
                     target_frame_num = max(0, total_frames - 1)
-
                 cap.set(cv2.CAP_PROP_POS_FRAMES, target_frame_num)
                 ret, bgr_frame = cap.read()
                 if not ret or bgr_frame is None:
                     continue
 
-                # Generate lightweight thumbnail
                 thumb = cv2.resize(bgr_frame, thumbnail_dims, interpolation=cv2.INTER_AREA)
                 encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 75]
                 _, enc_bytes = cv2.imencode(".jpg", thumb, encode_param)
                 b64_str = "data:image/jpeg;base64," + base64.b64encode(enc_bytes).decode("ascii")
-
-                # Edge gradient visualization preview
                 gray_thumb = cv2.cvtColor(thumb, cv2.COLOR_BGR2GRAY)
                 lap_edge = cv2.Laplacian(gray_thumb, cv2.CV_8U)
                 lap_color = cv2.applyColorMap(lap_edge, cv2.COLORMAP_JET)
                 _, edge_bytes = cv2.imencode(".jpg", lap_color, encode_param)
                 edge_b64_str = "data:image/jpeg;base64," + base64.b64encode(edge_bytes).decode("ascii")
-
-                rgb_frame = cv2.cvtColor(thumb, cv2.COLOR_BGR2RGB)
-                pil_img = Image.fromarray(rgb_frame)
-
+                pil_img = Image.fromarray(cv2.cvtColor(thumb, cv2.COLOR_BGR2RGB))
                 m, s_frac = divmod(target_time, 60)
                 ts_str = f"{int(m):02d}:{s_frac:05.2f}"
 
@@ -225,7 +154,6 @@ def extract_24fps_frames_with_meta(
 
         logger.info("24 FPS Extraction SUCCESS: Generated %d frames for %s", len(results), video_path.name)
         return results
-
     finally:
         cap.release()
 
@@ -238,31 +166,21 @@ def extract_all_video_frames(
     save_frames_to_disk: bool = True,
     progress_callback: Optional[Any] = None,
 ) -> Dict[str, Any]:
-    """
-    SafeGate 2.0 Complete Video Frame Extraction & Forensic Classification Engine.
-    
-    Extracts EVERY decoded visual frame from the video stream without dropping or skipping.
-    Applies the exact RED / GREEN / YELLOW color classification system to every frame.
-    Calculates SHA-256 hashes, stores frame files securely, and detects suspicious segments.
-    """
-    import hashlib
+    """Extract and classify every decoded video frame, storing forensic results."""
     import base64
+    import hashlib
+
     from app.pipeline.ai_engine import (
         default_ai_engine,
         CLASS_LEGITIMATE,
         CLASS_SUSPICIOUS,
         CLASS_UNCERTAIN,
-        COLOR_RED,
-        COLOR_GREEN,
-        COLOR_YELLOW,
     )
 
     if ai_engine is None:
         ai_engine = default_ai_engine
 
-    str_path = str(video_path.resolve())
-    cap = cv2.VideoCapture(str_path)
-
+    cap = cv2.VideoCapture(str(video_path.resolve()))
     if not cap.isOpened():
         raise ValueError(f"Corrupted or unsupported media stream: unable to decode '{video_path.name}'")
 
@@ -271,13 +189,10 @@ def extract_all_video_frames(
         total_expected_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH) or 0)
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT) or 0)
-
         if fps <= 0 or (total_expected_frames <= 0 and max_frames is None):
             raise ValueError(f"Invalid video stream headers: fps={fps}, total_frames={total_expected_frames}")
 
-        duration_sec = (total_expected_frames / fps) if fps > 0 and total_expected_frames > 0 else 0.0
-
-        # Frame storage directory
+        duration_sec = (total_expected_frames / fps) if total_expected_frames > 0 else 0.0
         frames_dir = settings.frames_path / upload_id
         if save_frames_to_disk:
             frames_dir.mkdir(parents=True, exist_ok=True)
@@ -286,13 +201,7 @@ def extract_all_video_frames(
         timeline_markers = []
         suspicious_timestamps = []
         suspicious_frame_refs = []
-
-        decoded_count = 0
-        legitimate_count = 0
-        suspicious_count = 0
-        uncertain_count = 0
-        failed_count = 0
-
+        decoded_count = legitimate_count = suspicious_count = uncertain_count = failed_count = 0
         prev_hist = None
         current_suspicious_run = []
         suspicious_segments = []
@@ -301,26 +210,20 @@ def extract_all_video_frames(
             ret, bgr_frame = cap.read()
             if not ret or bgr_frame is None:
                 break
-
             decoded_count += 1
             frame_idx = decoded_count
             timestamp_sec = round((frame_idx - 1) / fps, 4)
 
-            # Compute SHA-256 hash of this frame's raw image encoding
             encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 95]
             _, full_enc = cv2.imencode(".jpg", bgr_frame, encode_param)
             frame_bytes = full_enc.tobytes()
             frame_sha256 = hashlib.sha256(frame_bytes).hexdigest()
-
-            # Save full resolution frame image if enabled
             frame_path_str = None
-            thumb_path_str = None
             if save_frames_to_disk:
                 frame_file = frames_dir / f"frame_{frame_idx:06d}.jpg"
                 frame_file.write_bytes(frame_bytes)
                 frame_path_str = str(frame_file)
 
-            # Forensic & AI classification with RED/GREEN/YELLOW marking
             frame_res = ai_engine.classify_frame(
                 frame_idx=frame_idx,
                 timestamp_sec=timestamp_sec,
@@ -331,19 +234,15 @@ def extract_all_video_frames(
             frame_res.sha256_hash = frame_sha256
             frame_res.frame_path = frame_path_str
 
-            # Save stamped thumbnail to disk if enabled
             if save_frames_to_disk and frame_res.thumbnail_data:
                 thumb_file = frames_dir / f"thumb_{frame_idx:06d}.jpg"
                 try:
-                    # Strip data URL prefix
                     b64_content = frame_res.thumbnail_data.split(",", 1)[1]
                     thumb_file.write_bytes(base64.b64decode(b64_content))
-                    thumb_path_str = str(thumb_file)
-                    frame_res.thumbnail_path = thumb_path_str
+                    frame_res.thumbnail_path = str(thumb_file)
                 except Exception:
                     pass
 
-            # Update counters
             if frame_res.classification == CLASS_SUSPICIOUS:
                 suspicious_count += 1
                 suspicious_timestamps.append(frame_res.timestamp_str)
@@ -365,7 +264,6 @@ def extract_all_video_frames(
                     _finalize_suspicious_segment(current_suspicious_run, suspicious_segments)
                     current_suspicious_run = []
 
-            # Timeline marker
             timeline_markers.append({
                 "frame_index": frame_idx,
                 "timestamp_sec": timestamp_sec,
@@ -374,13 +272,9 @@ def extract_all_video_frames(
                 "color": frame_res.color_marker,
                 "anomaly_score": frame_res.anomaly_score,
             })
-
             frames_results.append(frame_res)
-
-            # Update temporal history for next frame comparison
             prev_hist = ai_engine.forensic_engine.compute_color_histogram(bgr_frame)
 
-            # Progress callback every 10 frames
             if progress_callback and (decoded_count % 10 == 0 or (total_expected_frames and decoded_count == total_expected_frames)):
                 pct = round((decoded_count / max(1, total_expected_frames)) * 100.0, 1) if total_expected_frames else 50.0
                 progress_callback({
@@ -393,19 +287,14 @@ def extract_all_video_frames(
                     "suspicious_frames": suspicious_count,
                     "uncertain_frames": uncertain_count,
                 })
-
             if max_frames and decoded_count >= max_frames:
                 break
 
-        # Finalize any trailing suspicious segment
         if current_suspicious_run:
             _finalize_suspicious_segment(current_suspicious_run, suspicious_segments)
-
         if decoded_count == 0:
             raise ValueError(f"Fail-closed: No readable visual frames could be decoded from '{video_path.name}'")
 
-        # Calculate overall video risk score (0 - 100)
-        # Any suspicious frame escalates risk score immediately!
         if suspicious_count > 0:
             pct_suspicious = (suspicious_count / decoded_count) * 100.0
             peak_anomaly = max((f.anomaly_score for f in frames_results if f.classification == CLASS_SUSPICIOUS), default=75.0)
@@ -418,9 +307,8 @@ def extract_all_video_frames(
 
         logger.info(
             "Complete Frame Extraction SUCCESS: %d frames (legit=%d, susp=%d, uncertain=%d, risk=%d) for %s",
-            decoded_count, legitimate_count, suspicious_count, uncertain_count, risk_score, video_path.name
+            decoded_count, legitimate_count, suspicious_count, uncertain_count, risk_score, video_path.name,
         )
-
         return {
             "total_frames_decoded": decoded_count,
             "total_expected_frames": total_expected_frames or decoded_count,
@@ -439,7 +327,6 @@ def extract_all_video_frames(
             "suspicious_timestamps": suspicious_timestamps,
             "suspicious_frame_references": suspicious_frame_refs,
         }
-
     finally:
         cap.release()
 
@@ -452,7 +339,6 @@ def _finalize_suspicious_segment(run_frames: List[Any], out_segments: List[Dict[
     last = run_frames[-1]
     peak_anom = max(f.anomaly_score for f in run_frames)
     reasons = list({f.detection_evidence for f in run_frames if f.detection_evidence})
-
     out_segments.append({
         "segment_id": len(out_segments) + 1,
         "start_frame": first.frame_index,
