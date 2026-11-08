@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Instagram — Secured by SafeGate 2.0 In-Line Video Firewall</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <div class="ig-app-container">
+
+    <!-- =======================================================================
+         1. INSTAGRAM SIDEBAR (WITH INTEGRATED SAFEGATE IN-LINE ENGINE)
+         ======================================================================= -->
+    <aside class="ig-sidebar">
+      <div>
+        <!-- Brand & Firewall Tag -->
+        <div class="ig-brand-area">
+          <div class="ig-logo-row">
+            <div class="ig-logo-icon">📸</div>
+            <span class="ig-logo-title">Instagram</span>
+          </div>
+          <div class="ig-firewall-active-tag" title="SafeGate 2.0 in-line proxy firewall is actively screening every video upload">
+            <span class="pulse-dot-green"></span>
+            <span>SafeGate Protected</span>
+          </div>
+        </div>
+
+        <!-- Navigation Links -->
+        <nav class="ig-nav-menu">
+          <button class="ig-nav-item active" data-view="view-feed" onclick="switchView('view-feed')">
+            <span class="ig-nav-icon">🏠</span>
+            <span>Home</span>
+          </button>
+          <button class="ig-nav-item" onclick="openCreateModal()">
+            <span class="ig-nav-icon">🔍</span>
+            <span>Search</span>
+          </button>
+          <button class="ig-nav-item" onclick="switchView('view-feed')">
+            <span class="ig-nav-icon">🧭</span>
+            <span>Explore</span>
+          </button>
+          <button class="ig-nav-item" onclick="switchView('view-feed')">
+            <span class="ig-nav-icon">🎬</span>
+            <span>Reels</span>
+          </button>
+          <button class="ig-nav-item" onclick="alert('Direct messages are protected by SafeGate multimedia scanner.')">
+            <span class="ig-nav-icon">✉️</span>
+            <span>Messages</span>
+          </button>
+          <button class="ig-nav-item" onclick="alert('No new notifications. SafeGate has blocked 0 threats targeting your account.')">
+            <span class="ig-nav-icon">❤️</span>
+            <span>Notifications</span>
+          </button>
+          
+          <!-- Primary Create Button: Triggers Background SafeGate Upload -->
+          <button class="ig-nav-item btn-create" onclick="openCreateModal()">
+            <span class="ig-nav-icon">➕</span>
+            <span>Create Post / Reel</span>
+          </button>
+
+          <div class="ig-sidebar-divider"></div>
+          
+          <div class="ig-firewall-nav-header">Embedded Firewall</div>
+
+          <!-- SafeGate Developer & SOC Inspector -->
+          <button class="ig-nav-item firewall-link" data-view="view-console" onclick="switchView('view-console')">
+            <span class="ig-nav-icon">🛡️</span>
+            <span>Firewall Inspector</span>
+            <span class="badge-soc-alert" id="sidebarQuarantineBadge">0</span>
+          </button>
+
+          <!-- Any App SDK Integration -->
+          <button class="ig-nav-item firewall-link" data-view="view-sdk" onclick="switchView('view-sdk')">
+            <span class="ig-nav-icon">⚡</span>
+            <span>Any-App SDK</span>
+          </button>
+        </nav>
+      </div>
+
+      <!-- User Profile Card -->
+      <div class="ig-sidebar-footer">
+        <div class="ig-user-profile-bar" onclick="openCreateModal()">
+          <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=face" alt="User Avatar" class="ig-avatar-sm">
+          <div class="ig-user-info">
+            <span class="ig-user-name">Bongoni Devendar</span>
+            <span class="ig-user-handle">@devendar.goud</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- =======================================================================
+         2. MAIN STAGE (TOP SCENARIO INGEST + DYNAMIC VIEWS)
+         ======================================================================= -->
+    <main class="ig-main-content">
+      
+      <!-- Top Scenarios Evaluation Bar (For Mentors & Quick Testing) -->
+      <header class="ig-top-scenario-bar">
+        <div class="scenario-bar-title">
+          <span>⚡ Ingest Test Media:</span>
+          <span class="scenario-badge">In-Line Firewall Active</span>
+        </div>
+        <div class="scenario-buttons-row">
+          <button class="btn-scenario-action scen-safe" onclick="runScenario('whatsapp')" title="Post WhatsApp Video (475 frames) -> In-line AI scan -> 100% Authentic -> Published to Feed">
+            <span>📱</span> Post WhatsApp Video (475 Frames)
+          </button>
+          <button class="btn-scenario-action scen-safe" onclick="runScenario(1)" title="Post authentic video -> Cleared by SafeGate -> GREEN frames -> Published to Feed">
+            <span>🟢</span> Post Authentic Video (Safe)
+          </button>
+          <button class="btn-scenario-action scen-morphed" onclick="runScenario(2)" title="Post deepfake video -> Intercepted -> RED frames -> BLOCKED from Feed">
+            <span>🔴</span> Post Deepfake / Morphed Video
+          </button>
+          <button class="btn-scenario-action scen-morphed" onclick="runScenario(3)" title="Post authentic video with 1 modified frame (Frame #25) -> Intercepted -> BLOCKED">
+            <span>🔴</span> Post Single-Frame Tamper
+          </button>
+          <button class="btn-scenario-action scen-uncertain" onclick="runScenario(4)" title="Post low-clarity video -> Inconclusive -> YELLOW frames -> Held in Quarantine">
+            <span>🟡</span> Post Uncertain Video
+          </button>
+          <button class="btn-scenario-action" onclick="runScenario(5)" title="Post corrupted bitstream -> Container Error -> Immediate Block">
+            <span>❌</span> Post Corrupted Stream
+          </button>
+          <button class="btn-scenario-action" onclick="openDemoVideoModal()" style="background: rgba(37, 99, 235, 0.25); border-color: #3b82f6; color: #93c5fd; font-weight: 700;" title="Watch 1080p SafeGate Demonstration Video featuring the uploaded video">
+            <span>🎥</span> Watch 1080p Demo Video
+          </button>
+        </div>
+      </header>
+
+      <!-- =====================================================================
+           VIEW A: INSTAGRAM FEED & REELS (SAFE POSTS ONLY)
+           ===================================================================== -->
+      <section id="view-feed" class="view-section active">
+        <div class="ig-feed-wrapper">
+          
+          <!-- Stories Tray -->
+          <div class="ig-stories-tray">
+            <div class="ig-story-item" onclick="openCreateModal()">
+              <div class="story-ring">
+                <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=face" class="story-avatar" alt="My Story">
+              </div>
+              <span class="story-username">Your Story</span>
+            </div>
+            <div class="ig-story-item">
+              <div class="story-ring verified-ring">
+                <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face" class="story-avatar" alt="User">
+              </div>
+              <span class="story-username">tech_insider</span>
+            </div>
+            <div class="ig-story-item">
+              <div class="story-ring verified-ring">
+                <img src="https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100&h=100&fit=crop&crop=face" class="story-avatar" alt="User">
+              </div>
+              <span class="story-username">ai_research</span>
+            </div>
+            <div class="ig-story-item">
+              <div class="story-ring verified-ring">
+                <img src="https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=100&h=100&fit=crop&crop=face" class="story-avatar" alt="User">
+              </div>
+              <span class="story-username">cyber_defense</span>
+            </div>
+            <div class="ig-story-item">
+              <div class="story-ring verified-ring">
+                <img src="https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=100&h=100&fit=crop&crop=face" class="story-avatar" alt="User">
+              </div>
+              <span class="story-username">sru_official</span>
+            </div>
+            <div class="ig-story-item">
+              <div class="story-ring verified-ring">
+                <img src="https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=100&h=100&fit=crop&crop=face" class="story-avatar" alt="User">
+              </div>
+              <span class="story-username">warangal_hub</span>
+            </div>
+          </div>
+
+          <!-- SafeGate In-Line Explainer Banner -->
+          <div class="ig-firewall-banner">
+            <div class="banner-left">
+              <span class="banner-icon">🛡️</span>
+              <div>
+                <div class="banner-title">SafeGate In-Line Media Firewall Active</div>
+                <div class="banner-desc">
+                  This Instagram application is secured by SafeGate. Every video upload is intercepted, decoded frame-by-frame, and screened for morphed/deepfake content in the background before appearing on this feed.
+                </div>
+              </div>
+            </div>
+            <button class="btn-open-inspector" onclick="switchView('view-console')">
+              Open Firewall Inspector &raquo;
+            </button>
+          </div>
+
+          <!-- Dynamic Instagram Posts Feed Container -->
+          <div id="igFeedPostsContainer" class="ig-posts-list">
+            <!-- Dynamically populated Instagram post cards -->
+          </div>
+
+        </div>
+      </section>
+
+      <!-- =====================================================================
+           VIEW B: SAFEGATE FIREWALL INSPECTOR & TELEMETRY CONSOLE
+           ===================================================================== -->
+      <section id="view-console" class="view-section">
+        <div class="safegate-console-view">
+          
+          <div class="console-header-card">
+            <div>
+              <div class="console-title-row">
+                <span style="font-size: 26px;">🛡️</span>
+                <h2 class="console-title">SafeGate 2.0 In-Line Firewall Inspector</h2>
+              </div>
+              <p class="console-sub">Inspect how SafeGate runs behind the Instagram application in the background: frame extraction, neural inferences, and zero-trust policy decisions.</p>
+            </div>
+            <button class="btn-scenario-action" onclick="switchView('view-feed')">
+              &laquo; Back to Instagram Feed
+            </button>
+          </div>
+
+          <!-- Color Convention Taxonomy Bar -->
+          <div class="color-taxonomy-bar">
+            <div class="tax-card card-green">
+              <span style="font-size: 20px;">🟢</span>
+              <div>
+                <div class="tax-title">GREEN — SAFE / AUTHENTIC VIDEO</div>
+                <div class="tax-desc">Clean optical sensor noise, natural edge variance, and continuous temporal coherence. Post allowed to publish.</div>
+              </div>
+            </div>
+            <div class="tax-card card-red">
+              <span style="font-size: 20px;">🔴</span>
+              <div>
+                <div class="tax-title">RED — MORPHED / DEEPFAKE / BAD CONTENT</div>
+                <div class="tax-desc">Synthetic frequency harmonics, face-swapping boundaries, or high JPEG MSE detected. Post blocked &amp; quarantined.</div>
+              </div>
+            </div>
+            <div class="tax-card card-yellow">
+              <span style="font-size: 20px;">🟡</span>
+              <div>
+                <div class="tax-title">YELLOW — UNCERTAIN / AMBIGUOUS FRAME</div>
+                <div class="tax-desc">Low contrast, optical blur, or inconclusive landmark confidence. Held under fail-closed security.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Video Selector Bar for Fast Multi-Video Inspection -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; background: #16181c; padding: 12px 16px; border-radius: 10px; border: 1px solid var(--ig-border); flex-wrap: wrap; gap: 10px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <span style="font-weight: 700; font-size: 13px; color: #fff;">Inspected Video:</span>
+              <select id="consoleVideoSelect" onchange="onConsoleVideoSelectChanged(this.value)" style="background: #262626; color: #fff; border: 1px solid var(--ig-border); padding: 6px 12px; border-radius: 6px; font-size: 13px; min-width: 280px;">
+                <option value="">Select a video to inspect...</option>
+              </select>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button class="btn-scenario-action scen-safe" onclick="playCurrentInspectedVideo()">
+                <span>▶</span> Play Video (Cross-Check)
+              </button>
+              <button class="btn-scenario-action" onclick="refreshConsoleVideos()">
+                <span>↻</span> Refresh Scans
+              </button>
+            </div>
+          </div>
+
+          <!-- Video Player Dialog for Cross-Checking Scanned Video -->
+          <div id="consoleVideoPlayerBox" style="display: none; margin-bottom: 20px; background: #000; border-radius: 10px; overflow: hidden; border: 1px solid var(--firewall-cyan); padding: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span style="font-size: 12px; font-weight: 700; color: var(--firewall-cyan);" id="consoleVideoPlayerTitle">Video Playback Cross-Check</span>
+              <button class="btn-scenario-action" style="padding: 2px 8px; font-size: 11px;" onclick="document.getElementById('consoleVideoPlayerBox').style.display = 'none'; document.getElementById('consoleVideoElem').pause();">✕ Close Player</button>
+            </div>
+            <video id="consoleVideoElem" controls playsinline style="width: 100%; max-height: 380px; background: #000; border-radius: 6px;"></video>
+          </div>
+
+          <!-- Interactive Scrubber & Timeline -->
+          <div class="timeline-track-box">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <h4 style="font-size: 14px; font-weight: 700; color: #fff;">Video Frame Timeline (Colored Markers)</h4>
+              <span id="inspectVideoMeta" style="font-size: 11px; color: var(--firewall-cyan); font-family: var(--mono-family);">Video: — | Duration: —</span>
+            </div>
+            <div class="timeline-ticks-bar" id="inspectTimelineBar">
+              <!-- Color-coded ticks -->
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 10px; color: var(--ig-muted); margin-top: 4px; font-family: var(--mono-family);">
+              <span>00:00.000</span>
+              <span id="inspectMidTime">00:01.500</span>
+              <span id="inspectEndTime">00:03.000</span>
+            </div>
+          </div>
+
+          <!-- Frame Gallery Filter Controls -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <h4 style="font-size: 14px; font-weight: 700; color: #fff;">Decoded Frame Inspection Gallery (<span id="inspectFrameCount">0</span> Frames)</h4>
+            <div style="display: flex; gap: 8px;">
+              <button class="btn-scenario-action" onclick="setConsoleFilter('all')">All Frames</button>
+              <button class="btn-scenario-action scen-safe" onclick="setConsoleFilter('legitimate')">🟢 Safe Frames</button>
+              <button class="btn-scenario-action scen-morphed" onclick="setConsoleFilter('suspicious')">🔴 Morphed / Bad Frames</button>
+              <button class="btn-scenario-action scen-uncertain" onclick="setConsoleFilter('uncertain')">🟡 Uncertain</button>
+            </div>
+          </div>
+
+          <!-- Frame Inspection Grid -->
+          <div class="frames-gallery-grid" id="inspectFramesGrid">
+            <!-- Dynamically populated frame cards -->
+          </div>
+
+          <!-- SOC Moderation & Audit Ledger Section -->
+          <div style="margin-top: 36px; padding-top: 24px; border-top: 1px solid var(--ig-border);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+              <div>
+                <h3 style="font-size: 16px; font-weight: 800; color: #fff;">SOC Moderation Queue &amp; Cryptographic Audit Ledger</h3>
+                <p style="font-size: 12px; color: var(--ig-muted);">Quarantined videos awaiting human determination, anchored by an immutable HMAC SHA-256 hash chain.</p>
+              </div>
+              <button class="btn-scenario-action scen-safe" onclick="verifyLedger()">
+                <span>🔒</span> Verify Hash Chain Integrity
+              </button>
+            </div>
+            <div id="ledgerStatusBanner" style="display: none; padding: 10px 14px; background: rgba(34, 197, 94, 0.15); border: 1px solid var(--safe-green); border-radius: 8px; font-size: 12px; color: #4ade80; margin-bottom: 14px;"></div>
+            
+            <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+              <thead>
+                <tr style="background: #161f2e; text-align: left; color: #38bdf8;">
+                  <th style="padding: 8px 10px; border: 1px solid #2d3b55;">Video ID</th>
+                  <th style="padding: 8px 10px; border: 1px solid #2d3b55;">Title / Post</th>
+                  <th style="padding: 8px 10px; border: 1px solid #2d3b55;">Risk Score</th>
+                  <th style="padding: 8px 10px; border: 1px solid #2d3b55;">Verdict</th>
+                  <th style="padding: 8px 10px; border: 1px solid #2d3b55;">Status</th>
+                  <th style="padding: 8px 10px; border: 1px solid #2d3b55;">Moderator Actions</th>
+                </tr>
+              </thead>
+              <tbody id="inspectQuarantineTbody">
+                <!-- Quarantine rows -->
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- =====================================================================
+           VIEW C: ANY-APP INTEGRATION SDK GUIDE
+           ===================================================================== -->
+      <section id="view-sdk" class="view-section">
+        <div class="safegate-console-view">
+          <div class="console-header-card">
+            <div>
+              <div class="console-title-row">
+                <span style="font-size: 26px;">⚡</span>
+                <h2 class="console-title">Integrate SafeGate into Any Application</h2>
+              </div>
+              <p class="console-sub">SafeGate is built as an in-line middleware / SDK that plugs into any web or mobile application (Instagram, TikTok, YouTube, banking video KYC, news portals) in 3 lines of code.</p>
+            </div>
+            <button class="btn-scenario-action" onclick="switchView('view-feed')">
+              &laquo; Back to Instagram
+            </button>
+          </div>
+
+          <!-- Architecture Integration Card -->
+          <div class="sdk-snippet-card">
+            <h3 style="font-size: 15px; font-weight: 700; color: #fff; margin-bottom: 10px;">How In-Line Firewalls Work Across Any Application</h3>
+            <p style="font-size: 13px; color: #cbd5e1; margin-bottom: 14px;">
+              Unlike standalone websites where users must go to an external portal to scan files, SafeGate works <strong>inside your existing web or mobile app backend</strong> as an in-line interceptor. When a user uploads a video post, story, reel, or video KYC clip, SafeGate screens the media before granting write access to the CDN or database.
+            </p>
+            
+            <div style="background: #090d16; border: 1px solid #1e293b; border-radius: 8px; padding: 12px; font-family: var(--mono-family); font-size: 12px; color: #38bdf8; margin-bottom: 20px;">
+[MOBILE / WEB APP USER] ➔ (Creates Video Post / Reel)
+              │
+              ▼
+[ANY APP BACKEND (Node.js / Python / Go)]
+              │
+              ▼
+[SAFEGATE IN-LINE FIREWALL MIDDLEWARE]
+  ├─► 100% Complete Decoded Frame Extraction (OpenCV / FFmpeg)
+  ├─► PyTorch Neural Deepfake Classifier (Frequency Artifacts)
+  ├─► Physical Forensic Heuristics (MSE, Sharpness, Color Correlation)
+  └─► Strict Color Marking: 🟢 GREEN (Safe) | 🔴 RED (Morphed/Bad)
+              │
+       +──────┴────────────────────────+
+       │                               │
+       ▼ (100% Safe Frames)            ▼ (Morphed / Bad Frames Detected)
+ [ALLOW VERDICT]                 [QUARANTINE / BLOCK VERDICT]
+ Published to Feed &amp; CDN        Blocked with In-App Security Alert
+            </div>
+
+            <!-- Code Integration Examples -->
+            <div class="sdk-header-row">
+              <span class="sdk-title">Quick Integration Snippets</span>
+              <div class="sdk-tabs-row">
+                <button class="sdk-tab-btn active" onclick="showSdkTab('node')">Node.js / Express</button>
+                <button class="sdk-tab-btn" onclick="showSdkTab('python')">Python / FastAPI</button>
+                <button class="sdk-tab-btn" onclick="showSdkTab('react')">React / Frontend</button>
+              </div>
+            </div>
+
+            <div id="codeNode" class="sdk-code-block">
+// In your existing Node.js / Express video platform (e.g. Instagram / TikTok clone)
+const express = require('express');
+const { SafeGateFirewall } = require('@safegate/in-line-firewall');
+
+const app = express();
+
+// 1-Line Middleware: Intercept all video uploads before database commit
+app.post('/api/posts/video', SafeGateFirewall.intercept({
+  policy: 'zero-trust',
+  onAllow: (req, res, video) => {
+    // 🟢 Video verified clean: 100% frames marked GREEN
+    db.posts.create({ videoUrl: video.streamUrl, verified: true });
+    res.json({ status: 'published', message: 'Reel shared to feed!' });
+  },
+  onBlock: (req, res, violations) => {
+    // 🔴 Morphed / deepfake / bad content detected: Frames marked RED
+    res.status(403).json({
+      error: 'Post Blocked',
+      message: 'SafeGate detected morphed/AI-manipulated content.'
+    });
+  }
+}));</div>
+
+            <div id="codePython" class="sdk-code-block" style="display: none;">
+# In your existing Python / FastAPI application backend
+from fastapi import FastAPI, UploadFile, File
+from safegate.firewall import SafeGateFirewallMiddleware, evaluate_video
+
+app = FastAPI()
+
+# Add SafeGate in-line firewall middleware
+@app.post("/api/reels/upload")
+async def upload_reel(video: UploadFile = File(...)):
+    # SafeGate intercepts and decodes every frame in the background
+    verdict = await evaluate_video(video, policy="zero-trust")
+    
+    if verdict.status == "ALLOW":
+        # 🟢 100% frames GREEN: Publish to feed
+        return {"status": "published", "post_id": save_post(video)}
+    else:
+        # 🔴 Morphed/Bad frames RED: Block publication
+        return {"status": "blocked", "reason": "Morphed/deepfake detected"}</div>
+
+            <div id="codeReact" class="sdk-code-block" style="display: none;">
+// In your React / React Native / Mobile client application
+import { SafeGateUploadDropzone } from '@safegate/react-ui';
+
+export function CreatePostModal() {
+  return (
+    &lt;SafeGateUploadDropzone
+      endpoint="/api/videos/upload"
+      onVerificationPass={(post) => alert("Reel shared successfully!")}
+      onMorphedViolation={(alert) => showSecurityWarning(alert)}
+    /&gt;
+  );
+}</div>
+
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+  </div>
+
+  <!-- =========================================================================
+       3. INSTAGRAM "CREATE NEW POST / REEL" MODAL
+       ========================================================================= -->
+  <div id="igCreateModal" class="ig-modal-backdrop hidden">
+    <div class="ig-create-modal-card">
+      
+      <!-- Modal Header -->
+      <div class="ig-modal-header">
+        <button class="ig-modal-close-btn" onclick="closeCreateModal()">&times;</button>
+        <span class="ig-modal-title">Create new post / reel</span>
+        <button class="ig-modal-share-btn" id="btnSharePost" onclick="triggerInstagramShare()" disabled>
+          Share
+        </button>
+      </div>
+
+      <!-- Modal Body Split -->
+      <div class="ig-modal-body-split">
+        
+        <!-- Left: Upload Zone / Preview Player -->
+        <div class="ig-drop-zone-pane" id="igDropZone">
+          <input type="file" id="igFileInput" accept=".mp4,.mov,.avi,.webm" class="file-input-hidden">
+          
+          <div id="uploadPromptBox" style="text-align: center;">
+            <div class="ig-upload-icon-circle">🎬</div>
+            <div class="ig-upload-prompt-text">Drag video here, or select from computer</div>
+            <button class="btn-select-media" onclick="document.getElementById('igFileInput').click()">
+              Select from computer
+            </button>
+            <div style="font-size: 11px; color: var(--ig-muted); margin-top: 10px;">
+              Protected by SafeGate 2.0 In-Line AI Firewall
+            </div>
+          </div>
+
+          <!-- Video Playback & Cross-Check Container -->
+          <div id="playerPreviewContainer" style="display: none; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; position: relative;">
+            <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding: 0 4px;">
+              <span style="font-size: 12px; font-weight: 700; color: #4ade80; display: flex; align-items: center; gap: 6px;">
+                <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #4ade80;"></span>
+                Video Playback &amp; Verification Cross-Check
+              </span>
+              <button class="btn-scenario-action" style="padding: 3px 10px; font-size: 11px;" onclick="resetUploadMedia()">
+                ↺ Change Video
+              </button>
+            </div>
+            <div style="width: 100%; flex: 1; min-height: 280px; max-height: 400px; background: #000; border-radius: 10px; overflow: hidden; position: relative; display: flex; align-items: center; justify-content: center; border: 1px solid var(--ig-border);">
+              <video id="modalVideoPlayer" controls playsinline preload="auto" class="modal-preview-video" style="width: 100%; height: 100%; object-fit: contain;"></video>
+            </div>
+            <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--ig-muted); margin-top: 8px; font-family: var(--mono-family);">
+              <span id="previewVideoName">selected-video.mp4</span>
+              <span>Use controls above to play, pause, or seek</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Post Details & 1-Click Quick Evaluator Presets -->
+        <div class="ig-post-details-pane">
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+            <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=face" class="ig-avatar-sm" alt="User">
+            <span style="font-weight: 700; font-size: 13px;">devendar.goud</span>
+          </div>
+
+          <textarea id="igPostCaption" class="ig-caption-textarea" placeholder="Write a caption... (e.g. 'Sunset reflections at SR University 🌅 #Warangal')"></textarea>
+
+          <!-- 1-Click Test Presets for Evaluators -->
+          <div class="modal-presets-box">
+            <div class="presets-title">
+              <span>⚡</span> <span>1-Click Test Videos for Evaluation:</span>
+            </div>
+            <div class="presets-grid">
+              <button class="btn-preset-select safe-btn" onclick="selectPresetVideo('whatsapp')">
+                <span>📱</span> User WhatsApp Video (475 frames, 100% Authentic)
+              </button>
+              <button class="btn-preset-select safe-btn" onclick="selectPresetVideo(1)">
+                <span>🟢</span> Scenario 1: Authentic Video (Passes -> Published)
+              </button>
+              <button class="btn-preset-select morphed-btn" onclick="selectPresetVideo(2)">
+                <span>🔴</span> Scenario 2: Deepfake Video (Morphed -> Blocked)
+              </button>
+              <button class="btn-preset-select morphed-btn" onclick="selectPresetVideo(3)">
+                <span>🔴</span> Scenario 3: Single-Frame Tamper (Frame 25 -> Blocked)
+              </button>
+              <button class="btn-preset-select" onclick="selectPresetVideo(4)">
+                <span>🟡</span> Scenario 4: Uncertain Video (Held in Review)
+              </button>
+              <button class="btn-preset-select" style="border-color: #3b82f6; color: #93c5fd;" onclick="openDemoVideoModal()">
+                <span>🎥</span> Watch SafeGate 2.0 Demo Video (1080p HUD)
+              </button>
+            </div>
+          </div>
+
+          <div style="font-size: 11.5px; color: var(--ig-muted); line-height: 1.4;">
+            <strong>How this works:</strong> When you click <em>Share</em>, SafeGate intercepts the upload in the background, extracts every frame, runs PyTorch AI detection, and marks frames (🟢 Green for Safe, 🔴 Red for Morphed/Bad).
+          </div>
+        </div>
+
+      </div>
+
+      <!-- IN-LINE FIREWALL SCREENING OVERLAY (ACTIVE WHEN USER CLICKS SHARE) -->
+      <div id="igScreeningSheet" class="ig-screening-sheet hidden">
+        <div class="screening-shield-icon">🛡️</div>
+        <div class="screening-title">SafeGate In-Line Firewall Screening...</div>
+        <div class="screening-stage-text" id="screeningStageText">Stage 1: Ingesting into quarantine buffer...</div>
+        
+        <div class="screening-progress-bar">
+          <div class="screening-progress-fill" id="screeningProgressBarFill"></div>
+        </div>
+
+        <div class="screening-stats-pills">
+          <span class="sc-pill pill-green" id="scPillSafe">🟢 Safe Frames: 0</span>
+          <span class="sc-pill pill-red" id="scPillMorphed">🔴 Morphed / Bad: 0</span>
+          <span class="sc-pill pill-yellow" id="scPillUncert" style="display: none;">🟡 Uncertain: 0</span>
+        </div>
+
+        <!-- Live Extracted Frames Preview Strip inside Screening Sheet -->
+        <div id="screeningFramesStripBox" style="width: 100%; margin-top: 14px; display: none; text-align: left;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="font-size: 12px; font-weight: 700; color: #fff;">
+              Decoded Video Frames (<span id="screeningFrameCount">0</span> frames classified):
+            </span>
+            <span style="font-size: 11px; color: var(--ig-muted);">Click any frame to inspect details</span>
+          </div>
+          <div id="screeningFramesStrip" style="display: flex; gap: 8px; overflow-x: auto; padding: 6px 2px; max-height: 140px; scrollbar-width: thin;">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- Blocked / Morphed Alert Message Box (Shown if RED / Morphed/Bad) -->
+        <div id="screeningBlockedBox" class="screening-blocked-box" style="display: none;">
+          <div class="blocked-title" style="color: var(--morphed-red);">
+            <span>🚫</span> Video Upload Rejected &amp; Blocked
+          </div>
+          <div class="blocked-desc" id="screeningBlockedDesc">
+            SafeGate in-line firewall detected morphed, deepfake, or prohibited content (marked RED). In accordance with media integrity security policy, this video WILL NOT BE UPLOADED and publication is permanently blocked.
+          </div>
+          <div class="blocked-actions-row">
+            <button class="btn-scenario-action scen-morphed" onclick="viewViolationsInConsole()">
+              🔍 Inspect Violations in Console
+            </button>
+            <button class="btn-scenario-action" onclick="closeCreateModal()">
+              ✕ Discard Video
+            </button>
+          </div>
+        </div>
+
+        <!-- Inspection Required Box (Shown if YELLOW / Uncertain Frames) -->
+        <div id="screeningInspectionBox" class="screening-blocked-box" style="display: none; border-color: var(--uncertain-yellow); background: rgba(234, 179, 8, 0.1);">
+          <div class="blocked-title" style="color: var(--uncertain-yellow);">
+            <span>🟡</span> Video Sent for Security Inspection
+          </div>
+          <div class="blocked-desc" id="screeningInspectionDesc" style="color: #fef08a;">
+            SafeGate detected uncertain or low-confidence clarity in some frames (marked YELLOW). This video CANNOT be published automatically. It has been routed to the Quarantine Inspection Queue. Only after an administrator inspects and authorizes the video will it be published.
+          </div>
+          <div class="blocked-actions-row">
+            <button class="btn-scenario-action scen-uncertain" onclick="viewViolationsInConsole()">
+              🔍 Open Inspection Queue in Console
+            </button>
+            <button class="btn-scenario-action" onclick="closeCreateModal()">
+              ✓ Acknowledge &amp; Wait for Approval
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Deep Frame Comparison Modal -->
+  <div id="frameDetailModal" class="ig-modal-backdrop hidden">
+    <div class="ig-create-modal-card" style="max-width: 900px; height: 620px;">
+      <div class="ig-modal-header">
+        <span class="ig-modal-title" id="frameDetailTitle">Frame Inspection</span>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <button class="btn-scenario-action" style="padding: 3px 8px; font-size: 11px;" onclick="navigateDetailFrame(-1)">◀ Prev</button>
+          <button class="btn-scenario-action" style="padding: 3px 8px; font-size: 11px;" onclick="navigateDetailFrame(1)">Next ▶</button>
+          <button class="btn-scenario-action scen-morphed" style="padding: 3px 8px; font-size: 11px;" onclick="jumpNextMorphedFrame()">Next Morphed 🔴</button>
+          <button class="ig-modal-close-btn" onclick="closeFrameDetailModal()">&times;</button>
+        </div>
+      </div>
+      <div class="ig-modal-body-split">
+        <div style="flex: 1.3; background: #000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px; position: relative;">
+          <img id="detailFrameImg" src="" style="max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px;" onerror="this.src=this.src.replace('/image', '/thumbnail');">
+          <div id="detailFrameOverlay" style="position: absolute; bottom: 16px; left: 16px; background: rgba(0,0,0,0.75); padding: 4px 10px; border-radius: 6px; font-size: 11px; color: #fff; font-family: var(--mono-family);">
+            Frame Content Loaded
+          </div>
+        </div>
+        <div style="flex: 1; padding: 18px; background: #16181c; overflow-y: auto;">
+          <div id="detailVerdictBadge" style="display: inline-block; padding: 4px 10px; border-radius: 8px; font-weight: 800; font-size: 12px; margin-bottom: 12px;"></div>
+          <div style="font-size: 13px; margin-bottom: 8px;"><strong>Timestamp:</strong> <span id="detailTimestamp" style="font-family: var(--mono-family);">00:00:00.000</span></div>
+          <div style="font-size: 13px; margin-bottom: 8px;"><strong>Color Marker:</strong> <span id="detailColorMarker">GREEN</span></div>
+          <div style="font-size: 13px; margin-bottom: 8px;"><strong>AI Verdict:</strong> <span id="detailModelOutput">—</span></div>
+          <div style="font-size: 13px; margin-bottom: 8px;"><strong>Anomaly Score:</strong> <span id="detailAnomaly">—</span></div>
+          <div style="font-size: 13px; margin-bottom: 8px;"><strong>SHA-256 Hash:</strong> <code id="detailSha256" style="font-size: 10px; word-break: break-all; color: var(--firewall-cyan);">—</code></div>
+          <div style="margin-top: 14px; padding: 10px; background: #1c2333; border-radius: 8px; font-size: 12px;">
+            <strong>Forensic Evidence:</strong>
+            <p id="detailEvidence" style="margin-top: 4px; color: #cbd5e1;">Pristine camera sensor signature.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =======================================================================
+       7. DEMO VIDEO MODAL (1080P WALKTHROUGH USING USER VIDEO)
+       ======================================================================= -->
+  <div id="demoVideoModal" class="ig-modal-overlay" style="display: none; align-items: center; justify-content: center; z-index: 9999;">
+    <div class="ig-modal-content" style="max-width: 960px; width: 92%; height: auto; border: 1px solid var(--firewall-cyan); box-shadow: 0 0 30px rgba(6, 182, 212, 0.3);">
+      <div class="ig-modal-header" style="justify-content: space-between; border-bottom: 1px solid var(--ig-border); padding: 14px 20px;">
+        <span style="font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 8px; color: #fff;">
+          <span style="color: var(--firewall-cyan);">🎥</span> SafeGate 2.0 — Live In-Line AI Firewall Demo Video (1080p HD)
+        </span>
+        <button class="btn-close-modal" onclick="closeDemoVideoModal()" style="background: none; border: none; color: #fff; font-size: 18px; cursor: pointer;">✕</button>
+      </div>
+      <div style="padding: 16px; background: #000; border-radius: 0 0 16px 16px;">
+        <video id="fullDemoPlayer" controls preload="auto" style="width: 100%; border-radius: 8px; max-height: 520px; background: #000; display: block;">
+          <source src="safegate_user_video_demo.mp4" type="video/mp4">
+          <source src="samples/uploaded_user_video.mp4" type="video/mp4">
+          Your browser does not support HTML5 video.
+        </video>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px; font-size: 12px; color: var(--ig-muted); flex-wrap: wrap; gap: 10px;">
+          <span>Demonstration analyzing <strong>WhatsApp_Video_2026-11-03_at_14.50.35.mp4</strong> (475 frames, 59.9 FPS)</span>
+          <div style="display: flex; gap: 10px;">
+            <a href="safegate_user_video_demo.mp4" download="safegate_user_video_demo.mp4" class="btn-scenario-action" style="font-size: 11px; padding: 6px 14px; text-decoration: none; background: rgba(34, 197, 94, 0.2); border-color: #22c55e; color: #4ade80; display: inline-flex; align-items: center; gap: 6px;">
+              <span>⬇</span> Download Demo MP4 (23 MB)
+            </a>
+            <button class="btn-scenario-action" onclick="closeDemoVideoModal()" style="font-size: 11px; padding: 6px 14px;">
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
