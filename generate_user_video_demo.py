@@ -1,15 +1,22 @@
 """
-SafeGate 2.0 — User Video Demonstration Generator (< 20 MB Optimized)
-====================================================================
-Produces a cinematic 1080p (1920x1080 @ 24 FPS) demonstration video (< 20 MB)
-showcase of the SafeGate 2.0 In-Line AI Video Firewall inspecting:
+SafeGate 2.0 — User Video Demonstration Generator
+=================================================
+Produces a high-definition 1080p (1920x1080 @ 30 FPS) demonstration video showcasing
+the SafeGate 2.0 In-Line AI Video Firewall inspecting the user's uploaded video:
 'WhatsApp_Video_2026-11-03_at_14.50.35.mp4'
 
-Optimized for web streaming, social media uploads, and evaluations:
-  - 1080p Full HD Resolution (1920x1080)
-  - 24 FPS Cinema Standard (Smooth Kinematics)
-  - 26-Second Total Walkthrough
-  - File Size: ~14 - 16 MB (Strictly < 20 MB constraint)
+Visual Structure:
+  1. Header: SafeGate 2.0 Brand, Live In-Line Firewall Status, Zero-Trust Architecture.
+  2. Left Panel: User Video Player with real-time Cyber-HUD, color-coded frame bounding
+     (🟢 Green: Authentic, 🟡 Yellow: Uncertain, 🔴 Red: Morphed), and frame metadata.
+  3. Right Panel: SafeGate AI Forensics Stack (Landmarks, FFT Spectrum, PRNU Sensor Noise,
+     Optical Flow, Dynamic Risk Meter, and Frame-by-Frame Statistics).
+  4. Bottom Panel: Interactive 475-frame color-coded timeline with live playhead.
+  5. Progression:
+     - Phase 1 (0-4s): Intake & Secure Quarantine Buffer
+     - Phase 2 (4-20s): Live Frame-by-Frame AI Forensic Scan (User Video Playback)
+     - Phase 3 (20-27s): Tri-State Firewall Policy Verdict (ALLOW / Clean)
+     - Phase 4 (27-34s): In-Feed Publication (Instagram UI) & HMAC Cryptographic Audit Log
 """
 
 import os
@@ -25,7 +32,7 @@ DASHBOARD_VIDEO = BASE_DIR / "dashboard" / "safegate_user_video_demo.mp4"
 
 WIDTH = 1920
 HEIGHT = 1080
-FPS = 24
+FPS = 30
 
 # Color Palette (BGR)
 COLOR_BG = (15, 12, 10)           # Dark Slate
@@ -42,7 +49,7 @@ COLOR_PURPLE = (220, 80, 160)     # AI Mesh Accent
 
 
 def draw_rounded_rect(img, pt1, pt2, color, thickness=1, radius=10):
-    """Draws a clean rectangle."""
+    """Draws a clean rectangle (simulated rounded corners)."""
     x1, y1 = pt1
     x2, y2 = pt2
     cv2.rectangle(img, (x1, y1), (x2, y2), color, thickness)
@@ -95,10 +102,10 @@ def build_demo_video():
     if not writer.isOpened():
         raise RuntimeError("Failed to initialize OpenCV VideoWriter with mp4v.")
 
-    total_duration_sec = 26
-    total_output_frames = total_duration_sec * FPS # 624 frames
+    total_duration_sec = 34
+    total_output_frames = total_duration_sec * FPS # 1020 frames
 
-    print(f"Generating Optimized SafeGate 2.0 Video ({total_output_frames} frames @ {FPS} FPS)...")
+    print(f"Generating SafeGate 2.0 Demonstration Video ({total_output_frames} frames @ {FPS} FPS)...")
 
     # Geometry Layout
     HEADER_H = 75
@@ -143,14 +150,14 @@ def build_demo_video():
         cv2.putText(canvas, "FAIL-CLOSED ZERO-TRUST", (1580, 43), cv2.FONT_HERSHEY_SIMPLEX, 0.48, COLOR_CYAN, 1, cv2.LINE_AA)
 
         # =====================================================================
-        # 2. PHASE PROGRESSION LOGIC (26-Second Timeline)
+        # 2. PHASE PROGRESSION LOGIC
         # =====================================================================
-        # Phase 1: 0.0s - 3.0s (Intake & Ingestion)
-        # Phase 2: 3.0s - 16.0s (Live AI Frame-by-Frame Forensic Analysis)
-        # Phase 3: 16.0s - 21.0s (Firewall Verdict & Tri-State Gating)
-        # Phase 4: 21.0s - 26.0s (Platform Publication & HMAC Audit Log)
+        # Phase 1: 0.0s - 4.0s (Intake & Ingestion)
+        # Phase 2: 4.0s - 20.0s (Live AI Frame-by-Frame Forensic Analysis)
+        # Phase 3: 20.0s - 27.0s (Firewall Verdict & Tri-State Gating)
+        # Phase 4: 27.0s - 34.0s (Platform Publication & HMAC Audit Log)
 
-        if sim_time < 3.0:
+        if sim_time < 4.0:
             # ---------------- PHASE 1: INTAKE & VALIDATION -------------------
             phase_name = "PHASE 1: IN-LINE INTERCEPTION & MAGIC BYTE VALIDATION"
             phase_color = COLOR_CYAN
@@ -177,7 +184,7 @@ def build_demo_video():
                 cv2.putText(canvas, val, (250, y_pos), cv2.FONT_HERSHEY_DUPLEX, 0.52, COLOR_TEXT_MAIN, 1, cv2.LINE_AA)
 
             # Stage progress bar
-            progress = min(1.0, sim_time / 2.8)
+            progress = min(1.0, sim_time / 3.8)
             draw_filled_card(canvas, (50, MAIN_Y + 530), (20 + LEFT_W - 50, MAIN_Y + 560), (18, 14, 12), COLOR_BORDER, 1)
             cv2.rectangle(canvas, (52, MAIN_Y + 532), (52 + int((LEFT_W - 104) * progress), MAIN_Y + 558), COLOR_CYAN, -1)
             cv2.putText(canvas, f"Validating Magic Bytes & Hashing Payload: {int(progress * 100)}%",
@@ -200,14 +207,14 @@ def build_demo_video():
             cv2.putText(canvas, "Zero-Trust Rule: No video is published without complete frame extraction & classification.",
                         (center_x - 320, center_y + 195), cv2.FONT_HERSHEY_SIMPLEX, 0.50, COLOR_TEXT_MUTED, 1, cv2.LINE_AA)
 
-        elif sim_time < 16.0:
+        elif sim_time < 20.0:
             # ---------------- PHASE 2: LIVE AI FORENSIC SCAN -----------------
             phase_name = "PHASE 2: FRAME-BY-FRAME AI FORENSIC ANALYSIS & CLASSIFICATION"
             phase_color = COLOR_GREEN
 
             # Compute current playback frame from user frames
-            scan_time = sim_time - 3.0
-            scan_duration = 13.0
+            scan_time = sim_time - 4.0
+            scan_duration = 16.0
             scan_fraction = scan_time / scan_duration # 0.0 to 1.0
             current_frame_num = int(scan_fraction * (total_input_frames - 1))
             current_frame_num = max(0, min(total_input_frames - 1, current_frame_num))
@@ -303,10 +310,10 @@ def build_demo_video():
             cv2.putText(canvas, "🟡 Uncertain: 0", (stat_x + 15, stat_y + 100), cv2.FONT_HERSHEY_DUPLEX, 0.50, COLOR_YELLOW, 1, cv2.LINE_AA)
 
             # Scan speed indicator
-            cv2.putText(canvas, "Extraction Speed: 59.9 FPS | Memory Buffer: 0.14 MB | Batch Size: 32 Frames",
+            cv2.putText(canvas, f"Extraction Speed: 59.9 FPS | Memory Buffer: 0.14 MB | Batch Size: 32 Frames",
                         (RIGHT_X + 35, MAIN_Y + 600), cv2.FONT_HERSHEY_SIMPLEX, 0.45, COLOR_TEXT_MUTED, 1, cv2.LINE_AA)
 
-        elif sim_time < 21.0:
+        elif sim_time < 27.0:
             # ---------------- PHASE 3: VERDICT & TRI-STATE GATING ------------
             phase_name = "PHASE 3: SECURITY POLICY ENGINE & TRI-STATE VERDICT"
             phase_color = COLOR_GREEN
@@ -438,9 +445,9 @@ def build_demo_video():
         draw_filled_card(canvas, (tl_x, tl_y), (tl_x + tl_w, tl_y + tl_h), (14, 11, 10), COLOR_BORDER, 1)
 
         # Progress in video analysis
-        if sim_time >= 3.0:
-            if sim_time < 16.0:
-                tl_progress = (sim_time - 3.0) / 13.0
+        if sim_time >= 4.0:
+            if sim_time < 20.0:
+                tl_progress = (sim_time - 4.0) / 16.0
             else:
                 tl_progress = 1.0
             active_w = int(tl_w * tl_progress)
@@ -454,25 +461,21 @@ def build_demo_video():
         # Write frame to video
         writer.write(canvas)
 
-        if f_idx % 80 == 0:
+        if f_idx % 90 == 0:
             pct = int((f_idx / total_output_frames) * 100)
             print(f"Rendering demo video: {pct}% ({f_idx}/{total_output_frames} frames)...")
 
     writer.release()
     print("Video encoding complete!")
-    size_mb = OUTPUT_VIDEO.stat().st_size / (1024 * 1024)
-    print(f"Created: {OUTPUT_VIDEO} ({size_mb:.2f} MB)")
+    print(f"Created: {OUTPUT_VIDEO} ({OUTPUT_VIDEO.stat().st_size / (1024*1024):.2f} MB)")
 
-    # Copy to dashboard/ and brain artifacts for web streaming and user download
+    # Copy to dashboard/ for web streaming
     try:
         import shutil
         shutil.copy2(OUTPUT_VIDEO, DASHBOARD_VIDEO)
         print(f"Copied to dashboard: {DASHBOARD_VIDEO}")
-        brain_path = Path(r"C:\Users\user\.gemini\antigravity\brain\6725ad3a-fdf1-46af-9dfe-55c7741be7e8\safegate_user_video_demo.mp4")
-        shutil.copy2(OUTPUT_VIDEO, brain_path)
-        print(f"Copied to brain artifacts: {brain_path}")
     except Exception as e:
-        print(f"Copy error: {e}")
+        print(f"Dashboard copy error: {e}")
 
 
 if __name__ == "__main__":
