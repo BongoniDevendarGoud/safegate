@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Instagram — Secured by SafeGate 2.0 In-Line Video Firewall</title>
-  <link rel="stylesheet" href="style.css?v=2.8">
+  <link rel="stylesheet" href="style.css?v=2.9">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -119,8 +119,8 @@
           <button class="btn-scenario-action scen-morphed" onclick="runScenario(3)" title="Post authentic video with 1 modified frame (Frame #25) -> Intercepted -> BLOCKED">
             <span>🔴</span> Post Single-Frame Tamper
           </button>
-          <button class="btn-scenario-action scen-uncertain" onclick="runScenario(4)" title="Post low-clarity video -> Inconclusive -> YELLOW frames -> Held in Quarantine">
-            <span>🟡</span> Post Uncertain Video
+          <button class="btn-scenario-action scen-uncertain" onclick="runScenario(4)" title="Post video with blood / sensitive content -> Flagged YELLOW -> Sent for Observation in Quarantine">
+            <span>🟡</span> Post Sensitive / Blood Video (For Observation)
           </button>
           <button class="btn-scenario-action" onclick="runScenario(5)" title="Post corrupted bitstream -> Container Error -> Immediate Block">
             <span>❌</span> Post Corrupted Stream
@@ -551,7 +551,7 @@ export function CreatePostModal() {
                 <span>🔴</span> Scenario 3: Single-Frame Tamper (Frame 25 -> Blocked)
               </button>
               <button class="btn-preset-select" onclick="selectPresetVideo(4)">
-                <span>🟡</span> Scenario 4: Uncertain Video (Held in Review)
+                <span>🟡</span> Scenario 4: Sensitive Scene (Blood & Low-Light -> Observation)
               </button>
               <button class="btn-preset-select" style="border-color: #3b82f6; color: #93c5fd;" onclick="openDemoVideoModal()">
                 <span>🎥</span> Watch SafeGate 2.0 Demo Video (1080p HUD)
@@ -559,11 +559,13 @@ export function CreatePostModal() {
             </div>
           </div>
 
-          <div style="font-size: 11.5px; color: var(--ig-muted); line-height: 1.4;">
-            <strong>How this works:</strong> When you click <em>Share</em>, SafeGate intercepts the upload in the background, extracts every frame, runs PyTorch AI detection, and marks frames (🟢 Green for Safe, 🔴 Red for Morphed/Bad).
+          <div style="font-size: 11.5px; color: var(--ig-muted); line-height: 1.5; margin-top: 10px;">
+            <strong>SafeGate Tri-State Security Policy:</strong><br>
+            &bull; 🟢 <strong>GREEN (Safe):</strong> 100% authentic camera video. Cleared &amp; published directly to feed.<br>
+            &bull; 🔴 <strong>RED (Morphed / Deepfake / Bad):</strong> Edited, morphed, or deepfake video. <strong>Upload is permanently BLOCKED.</strong><br>
+            &bull; 🟡 <strong>YELLOW (Blood / Sensitive):</strong> Blood or sensitive content. <strong>Sent for observation</strong> (requires admin review before publishing).
           </div>
         </div>
-
       </div>
 
       <!-- IN-LINE FIREWALL SCREENING OVERLAY (ACTIVE WHEN USER CLICKS SHARE) -->
@@ -579,7 +581,7 @@ export function CreatePostModal() {
         <div class="screening-stats-pills">
           <span class="sc-pill pill-green" id="scPillSafe">🟢 Safe Frames: 0</span>
           <span class="sc-pill pill-red" id="scPillMorphed">🔴 Morphed / Bad: 0</span>
-          <span class="sc-pill pill-yellow" id="scPillUncert" style="display: none;">🟡 Uncertain: 0</span>
+          <span class="sc-pill pill-yellow" id="scPillUncert" style="display: none;">🟡 Sensitive / Blood: 0</span>
         </div>
 
         <!-- Live Extracted Frames Preview Strip inside Screening Sheet -->
@@ -613,10 +615,10 @@ export function CreatePostModal() {
           </div>
         </div>
 
-        <!-- Inspection Required Box (Shown if YELLOW / Uncertain Frames) -->
+        <!-- Inspection Required Box (Shown if YELLOW / Blood or Sensitive Frames) -->
         <div id="screeningInspectionBox" class="screening-blocked-box" style="display: none; border-color: var(--uncertain-yellow); background: rgba(234, 179, 8, 0.1);">
           <div class="blocked-title" style="color: var(--uncertain-yellow);">
-            <span>🟡</span> Video Sent for Security Inspection
+            <span>🟡</span> Video Sent for Security Observation
           </div>
           <div class="blocked-desc" id="screeningInspectionDesc" style="color: #fef08a;">
             SafeGate detected uncertain or low-confidence clarity in some frames (marked YELLOW). This video CANNOT be published automatically. It has been routed to the Quarantine Inspection Queue. Only after an administrator inspects and authorizes the video will it be published.
@@ -703,6 +705,6 @@ export function CreatePostModal() {
     </div>
   </div>
 
-  <script src="app.js?v=2.8"></script>
+  <script src="app.js?v=2.9"></script>
 </body>
 </html>
