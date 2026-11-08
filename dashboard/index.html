@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Instagram — Secured by SafeGate 2.0 In-Line Video Firewall</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=2.8">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -477,17 +477,19 @@ export function CreatePostModal() {
       <div class="ig-modal-body-split">
         
         <!-- Left: Upload Zone / Preview Player -->
-        <div class="ig-drop-zone-pane" id="igDropZone">
-          <input type="file" id="igFileInput" accept=".mp4,.mov,.avi,.webm" class="file-input-hidden">
+        <div class="ig-drop-zone-pane" id="igDropZone" onclick="if(event.target.id!=='igFileInput' && !AppState.selectedFile && !AppState.selectedPresetId) document.getElementById('igFileInput').click()" style="cursor: pointer;">
+          <input type="file" id="igFileInput" accept="video/*,.mp4,.mov,.avi,.webm,.mkv,.m4v" class="file-input-hidden" onclick="this.value=null;">
           
           <div id="uploadPromptBox" style="text-align: center;">
             <div class="ig-upload-icon-circle">🎬</div>
-            <div class="ig-upload-prompt-text">Drag video here, or select from computer</div>
-            <button class="btn-select-media" onclick="document.getElementById('igFileInput').click()">
-              Select from computer
+            <div class="ig-upload-prompt-text" style="font-weight: 700; font-size: 15px; color: #fff; margin-bottom: 6px;">
+              Drag &amp; drop video here, or click to browse
+            </div>
+            <button class="btn-select-media" type="button" onclick="event.stopPropagation(); document.getElementById('igFileInput').click()">
+              📁 Select Video from Computer
             </button>
             <div style="font-size: 11px; color: var(--ig-muted); margin-top: 10px;">
-              Protected by SafeGate 2.0 In-Line AI Firewall
+              Protected by SafeGate 2.0 In-Line AI Firewall &bull; Supports MP4, MOV, WebM, AVI
             </div>
           </div>
 
@@ -509,6 +511,10 @@ export function CreatePostModal() {
               <span id="previewVideoName">selected-video.mp4</span>
               <span>Use controls above to play, pause, or seek</span>
             </div>
+            <!-- Prominent Primary Upload Button Under Video Player -->
+            <button id="btnSharePostPreview" class="btn-scenario-action scen-safe" style="width: 100%; margin-top: 10px; padding: 12px 16px; font-size: 13.5px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; cursor: pointer;" onclick="triggerInstagramShare()">
+              <span>🛡️</span> <span>Upload &amp; Screen Video with SafeGate</span>
+            </button>
           </div>
         </div>
 
@@ -520,6 +526,11 @@ export function CreatePostModal() {
           </div>
 
           <textarea id="igPostCaption" class="ig-caption-textarea" placeholder="Write a caption... (e.g. 'Sunset reflections at SR University 🌅 #Warangal')"></textarea>
+
+          <!-- Prominent Primary Upload Button Under Presets -->
+          <button id="btnSharePostSidebar" class="btn-scenario-action scen-safe" style="width: 100%; margin-bottom: 14px; padding: 12px 18px; font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; cursor: pointer;" onclick="triggerInstagramShare()" disabled>
+            <span>🛡️</span> <span>Upload &amp; Screen Post</span>
+          </button>
 
           <!-- 1-Click Test Presets for Evaluators -->
           <div class="modal-presets-box">
@@ -692,6 +703,6 @@ export function CreatePostModal() {
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=2.8"></script>
 </body>
 </html>
