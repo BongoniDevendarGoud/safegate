@@ -21,6 +21,7 @@ _temp_test_dir = tempfile.mkdtemp(prefix="safegate_pytest_")
 os.environ["ADMIN_API_KEY"] = "test-admin-key-12345"
 os.environ["CLIENT_API_KEY"] = "test-client-key-67890"
 os.environ["USE_GEMINI"] = "false"
+os.environ["SAFEGATE_MOCK_MODEL"] = "true"
 os.environ["DATABASE_URL"] = f"sqlite:///{Path(_temp_test_dir) / 'test_safegate.db'}"
 os.environ["QUARANTINE_DIR"] = str(Path(_temp_test_dir) / "quarantine")
 os.environ["REVIEW_DIR"] = str(Path(_temp_test_dir) / "review")

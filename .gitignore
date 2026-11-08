@@ -43,9 +43,12 @@ htmlcov/
 temp/
 model_cache/
 
-# Large Rendered Demo Video Outputs (Can be generated locally)
+# Demo Video Outputs & Samples
 *.mp4
 !samples/*.mp4
+!dashboard/samples/*.mp4
+!dashboard/*.mp4
+!safegate_user_video_demo.mp4
 !sample_clean.mp4
 !sample_malicious_deepfake.mp4
 demo_shot_*.jpg

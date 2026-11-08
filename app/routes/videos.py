@@ -1044,6 +1044,7 @@ def run_demonstration_scenario(scenario_id: int, db: Session = Depends(get_db)):
         4: video_map.get("uncertain"),
         5: video_map.get("corrupted"),
         6: video_map.get("legitimate"),  # uses clean video with simulated model failure
+        7: Path(settings.BASE_DIR) / "samples" / "uploaded_user_video.mp4",
     }
 
     target_file = scenario_files.get(scenario_id)
@@ -1057,6 +1058,7 @@ def run_demonstration_scenario(scenario_id: int, db: Session = Depends(get_db)):
         4: "Scenario 4: Uncertain Classification (Low Quality / Conflicting Signals)",
         5: "Scenario 5: Corrupted Video Stream",
         6: "Scenario 6: AI Detection Model Inference Failure",
+        7: "Scenario 7: User WhatsApp Video (475 Frames, Complete Extraction)",
     }
 
     # Handle Scenario 5: Corrupted Video

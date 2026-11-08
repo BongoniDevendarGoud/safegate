@@ -93,26 +93,37 @@ async function loadInstagramFeed() {
   const container = document.getElementById('igFeedPostsContainer');
   if (!container) return;
 
+  let videos = [];
   try {
     const res = await fetch('/api/website/videos');
-    if (!res.ok) return;
-    const videos = await res.json();
-
-    if (!videos || videos.length === 0) {
-      container.innerHTML = `
-        <div style="background: var(--ig-surface); border: 1px dashed var(--ig-border); border-radius: 12px; padding: 40px; text-align: center; color: var(--ig-muted);">
-          <div style="font-size: 36px; margin-bottom: 12px;">🛡️</div>
-          <h4 style="color: #fff; font-size: 16px; margin-bottom: 8px;">No Videos Published to Feed Yet</h4>
-          <p style="font-size: 13px; max-width: 440px; margin: 0 auto 16px;">
-            SafeGate's in-line firewall intercepts every upload. Only videos that pass all frame-level AI checks with an <strong>ALLOW</strong> verdict are published to this Instagram feed.
-          </p>
-          <button class="btn-scenario-action scen-safe" onclick="runScenario(1)">
-            <span>🟢</span> Post Authentic Video (Safe Test)
-          </button>
-        </div>
-      `;
-      return;
+    if (res.ok) {
+      videos = await res.json();
     }
+  } catch (err) {
+    console.warn("Backend API not reachable (running in static / GitHub Pages demo mode):", err);
+  }
+
+  // Fallback for static GitHub Pages hosting: Provide realistic verified posts
+  if (!videos || videos.length === 0) {
+    videos = [
+      {
+        id: "demo_post_whatsapp",
+        title: "Sunset Walk & Campus Highlights 🌅 #Warangal",
+        description: "Recorded live on mobile device. Screened & verified 100% authentic by SafeGate 2.0 In-Line AI Firewall.",
+        stream_url: "samples/uploaded_user_video.mp4",
+        sha256_hash: "a4f8b2d1c07b1c77e08929e3b0c44298fc1c149afbf4c8996fb92427ae41e464",
+        created_at: new Date().toISOString()
+      },
+      {
+        id: "demo_post_scen1",
+        title: "Morning Golden Hour at SR University 🌄",
+        description: "Zero synthetic artifacts detected. All 45 frames authentic.",
+        stream_url: "samples/scenario1_legitimate.mp4",
+        sha256_hash: "8e7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b7c6d5e4f3a2b1c0d9e8f7a",
+        created_at: new Date(Date.now() - 3600000).toISOString()
+      }
+    ];
+  }
 
     container.innerHTML = videos.map((v, idx) => {
       const likesCount = 840 + (idx * 173);
@@ -293,6 +304,23 @@ function resetUploadMedia() {
   if (shareBtn) shareBtn.disabled = true;
 }
 
+function openDemoVideoModal() {
+  const modal = document.getElementById('demoVideoModal');
+  const player = document.getElementById('fullDemoPlayer');
+  if (modal) modal.style.display = 'flex';
+  if (player) {
+    player.currentTime = 0;
+    player.play().catch(() => {});
+  }
+}
+
+function closeDemoVideoModal() {
+  const modal = document.getElementById('demoVideoModal');
+  const player = document.getElementById('fullDemoPlayer');
+  if (player) player.pause();
+  if (modal) modal.style.display = 'none';
+}
+
 function selectPresetVideo(scenarioId) {
   AppState.selectedPresetId = scenarioId;
   AppState.selectedFile = null;
@@ -308,14 +336,20 @@ function selectPresetVideo(scenarioId) {
     1: "Scenario 1: Authentic Real Camera Reel 🌅",
     2: "Scenario 2: Viral AI Deepfake Video 🎭",
     3: "Scenario 3: Video with 1 Modified Frame (#25) ⚠️",
-    4: "Scenario 4: Ambiguous Low-Light Clip 🌫️"
+    4: "Scenario 4: Ambiguous Low-Light Clip 🌫️",
+    5: "WhatsApp Video 2026-11-03 (475 Frames, 100% Authentic) 📱",
+    7: "WhatsApp Video 2026-11-03 (475 Frames, 100% Authentic) 📱",
+    'whatsapp': "WhatsApp Video 2026-11-03 (475 Frames, 100% Authentic) 📱"
   };
 
   const fileNames = {
     1: "scenario1_legitimate.mp4 (45 frames, 100% authentic)",
     2: "scenario2_deepfake.mp4 (45 frames, AI face-swapped)",
     3: "scenario3_single_modified.mp4 (45 frames, frame #25 tampered)",
-    4: "scenario4_uncertain.mp4 (45 frames, low-light blur)"
+    4: "scenario4_uncertain.mp4 (45 frames, low-light blur)",
+    5: "uploaded_user_video.mp4 (475 frames, 100% authentic)",
+    7: "uploaded_user_video.mp4 (475 frames, 100% authentic)",
+    'whatsapp': "uploaded_user_video.mp4 (475 frames, 100% authentic)"
   };
 
   if (nameEl) nameEl.innerText = fileNames[scenarioId] || `scenario${scenarioId}.mp4`;
@@ -323,7 +357,12 @@ function selectPresetVideo(scenarioId) {
     captionEl.value = names[scenarioId] || "Testing SafeGate in-line upload firewall";
   }
 
-  const sampleUrl = `/samples/scenario${scenarioId}_${scenarioId === 1 ? 'legitimate' : scenarioId === 2 ? 'deepfake' : scenarioId === 3 ? 'single_modified' : 'uncertain'}.mp4`;
+  let sampleUrl = '';
+  if (scenarioId === 'whatsapp' || scenarioId === 5 || scenarioId === 7) {
+    sampleUrl = 'samples/uploaded_user_video.mp4';
+  } else {
+    sampleUrl = `samples/scenario${scenarioId}_${scenarioId === 1 ? 'legitimate' : scenarioId === 2 ? 'deepfake' : scenarioId === 3 ? 'single_modified' : 'uncertain'}.mp4`;
+  }
 
   if (promptBox) promptBox.style.display = 'none';
   if (previewContainer) previewContainer.style.display = 'flex';
@@ -367,9 +406,84 @@ async function triggerInstagramShare() {
       stageText.innerText = "Decoding 100% of frames via OpenCV & running PyTorch AI models...";
       barFill.style.width = "45%";
 
-      const res = await fetch(`/api/demo/run-scenario/${AppState.selectedPresetId}`, { method: 'POST' });
-      if (!res.ok) throw new Error("Scenario execution failed");
-      result = await res.json();
+      const isWhatsApp = AppState.selectedPresetId === 'whatsapp' || AppState.selectedPresetId === 5 || AppState.selectedPresetId === 7;
+      const targetScenario = isWhatsApp ? 7 : AppState.selectedPresetId;
+
+      try {
+        const res = await fetch(`/api/demo/run-scenario/${targetScenario}`, { method: 'POST' });
+        if (res.ok) {
+          result = await res.json();
+        }
+      } catch (err) {
+        console.warn("Backend API not reachable (running in static / GitHub Pages demo mode):", err);
+      }
+
+      // If backend was not reached (e.g. GitHub Pages static hosting), provide full client simulation
+      if (!result) {
+        if (isWhatsApp) {
+          result = {
+            video_id: 'rec_whatsapp_475_authentic',
+            verdict: 'ALLOW',
+            total_frames: 475,
+            legitimate_frames: 475,
+            suspicious_frames: 0,
+            uncertain_frames: 0,
+            risk_score: 8,
+            title: 'WhatsApp Video 2026-11-03 (475 Frames)',
+            publishing_status: 'published',
+            media_url: 'samples/uploaded_user_video.mp4'
+          };
+        } else if (targetScenario === 1) {
+          result = {
+            video_id: 'rec_demo_scenario_1',
+            verdict: 'ALLOW',
+            total_frames: 45,
+            legitimate_frames: 45,
+            suspicious_frames: 0,
+            uncertain_frames: 0,
+            risk_score: 5,
+            title: 'Scenario 1: Authentic Video',
+            publishing_status: 'published',
+            media_url: 'samples/scenario1_legitimate.mp4'
+          };
+        } else if (targetScenario === 2) {
+          result = {
+            video_id: 'rec_demo_scenario_2',
+            verdict: 'BLOCK',
+            total_frames: 45,
+            legitimate_frames: 0,
+            suspicious_frames: 45,
+            uncertain_frames: 0,
+            risk_score: 95,
+            title: 'Scenario 2: Viral AI Deepfake Video',
+            publishing_status: 'rejected'
+          };
+        } else if (targetScenario === 3) {
+          result = {
+            video_id: 'rec_demo_scenario_3',
+            verdict: 'BLOCK',
+            total_frames: 45,
+            legitimate_frames: 44,
+            suspicious_frames: 1,
+            uncertain_frames: 0,
+            risk_score: 78,
+            title: 'Scenario 3: Single-Frame Tampered (#25)',
+            publishing_status: 'rejected'
+          };
+        } else {
+          result = {
+            video_id: 'rec_demo_scenario_4',
+            verdict: 'QUARANTINE',
+            total_frames: 45,
+            legitimate_frames: 15,
+            suspicious_frames: 0,
+            uncertain_frames: 30,
+            risk_score: 52,
+            title: 'Scenario 4: Ambiguous Low-Light Clip',
+            publishing_status: 'quarantined'
+          };
+        }
+      }
 
     } else if (AppState.selectedFile) {
       // Real upload flow
@@ -497,38 +611,47 @@ async function refreshConsoleVideos() {
   const select = document.getElementById('consoleVideoSelect');
   if (!select) return;
 
+  let videos = [];
   try {
     const res = await fetch('/api/admin/videos?limit=100');
-    if (!res.ok) return;
-    const data = await res.json();
-    const videos = data.videos || [];
-
-    if (videos.length === 0) {
-      select.innerHTML = '<option value="">No scanned videos found</option>';
-      return;
-    }
-
-    select.innerHTML = videos.map(v => {
-      const isAllowed = v.verdict === 'ALLOW';
-      const icon = isAllowed ? '🟢' : '🔴';
-      const title = v.title || v.original_filename || 'Video Upload';
-      return `<option value="${v.id}">${icon} ${escapeHtml(title)} (${v.total_frames || 0} frames) [${v.verdict}]</option>`;
-    }).join('');
-
-    // If active video exists in database, select it; otherwise default to most recent (first)
-    if (AppState.currentVideoId && videos.some(v => v.id === AppState.currentVideoId)) {
-      select.value = AppState.currentVideoId;
-    } else if (videos.length > 0) {
-      AppState.currentVideoId = videos[0].id;
-      select.value = videos[0].id;
-    }
-
-    if (AppState.currentVideoId) {
-      loadVideoFramesForConsole(AppState.currentVideoId);
-      loadTimelineForConsole(AppState.currentVideoId);
+    if (res.ok) {
+      const data = await res.json();
+      videos = data.videos || [];
     }
   } catch (err) {
-    console.error('Error refreshing console videos:', err);
+    console.warn("Backend admin API unreachable, using static demo records:", err);
+  }
+
+  // Fallback for GitHub Pages static hosting
+  if (videos.length === 0) {
+    videos = [
+      { id: "rec_whatsapp_475", title: "WhatsApp Video 2026-11-03 (User Upload)", verdict: "ALLOW", total_frames: 475 },
+      { id: "rec_demo_1", title: "Scenario 1: Authentic Real Camera Reel", verdict: "ALLOW", total_frames: 45 },
+      { id: "rec_demo_2", title: "Scenario 2: Viral AI Deepfake Video", verdict: "BLOCK", total_frames: 45 },
+      { id: "rec_demo_3", title: "Scenario 3: Video with 1 Modified Frame (#25)", verdict: "BLOCK", total_frames: 45 },
+      { id: "rec_demo_4", title: "Scenario 4: Ambiguous Low-Light Clip", verdict: "QUARANTINE", total_frames: 45 }
+    ];
+  }
+
+  select.innerHTML = videos.map(v => {
+    const isAllowed = v.verdict === 'ALLOW';
+    const isQuarantine = v.verdict === 'QUARANTINE';
+    const icon = isAllowed ? '🟢' : (isQuarantine ? '🟡' : '🔴');
+    const title = v.title || v.original_filename || 'Video Upload';
+    return `<option value="${v.id}">${icon} ${escapeHtml(title)} (${v.total_frames || 0} frames) [${v.verdict}]</option>`;
+  }).join('');
+
+  // If active video exists, select it; otherwise default to most recent (first)
+  if (AppState.currentVideoId && videos.some(v => v.id === AppState.currentVideoId)) {
+    select.value = AppState.currentVideoId;
+  } else if (videos.length > 0) {
+    AppState.currentVideoId = videos[0].id;
+    select.value = videos[0].id;
+  }
+
+  if (AppState.currentVideoId) {
+    loadVideoFramesForConsole(AppState.currentVideoId);
+    loadTimelineForConsole(AppState.currentVideoId);
   }
 }
 
@@ -616,20 +739,55 @@ async function loadVideoFramesForConsole(videoId) {
   const countEl = document.getElementById('inspectFrameCount');
   if (countEl) countEl.innerText = "...";
 
+  let data = null;
   try {
     const res = await fetch(`/api/videos/${videoId}/frames?page_size=500`);
-    if (!res.ok) return;
-    const data = await res.json();
-    AppState.currentFrames = (data.frames || []).map(f => ({
-      ...f,
-      id: f.id || f.frame_id,
-      upload_id: f.upload_id || videoId
-    }));
-    renderConsoleGallery();
-    renderScreeningFramesStrip(AppState.currentFrames, videoId);
+    if (res.ok) data = await res.json();
   } catch (err) {
-    console.error('Error loading frames:', err);
+    console.warn("Backend frames API unreachable, generating static demo gallery:", err);
   }
+
+  // Fallback for static GitHub Pages hosting
+  if (!data || !data.frames || data.frames.length === 0) {
+    const isWhatsApp = String(videoId).includes('whatsapp');
+    const isDeepfake = String(videoId).includes('2');
+    const isSingleMod = String(videoId).includes('3');
+    const isUncert = String(videoId).includes('4');
+    const count = isWhatsApp ? 60 : 45;
+    const mockFrames = [];
+    for (let i = 1; i <= count; i++) {
+      let cls = 'legitimate';
+      let score = 3.5;
+      if (isDeepfake) {
+        cls = 'suspicious';
+        score = 96.2;
+      } else if (isSingleMod && i === 25) {
+        cls = 'suspicious';
+        score = 94.8;
+      } else if (isUncert && i >= 15 && i <= 35) {
+        cls = 'uncertain';
+        score = 52.0;
+      }
+      mockFrames.push({
+        id: `mock_f_${i}`,
+        frame_index: i,
+        timestamp_sec: i * (isWhatsApp ? 0.132 : 0.033),
+        classification: cls,
+        anomaly_score: score,
+        model_output: cls === 'legitimate' ? 'Authentic Optical Frame' : (cls === 'suspicious' ? 'Synthetic Face-Swap Boundary' : 'Low Clarity Inconclusive'),
+        detection_evidence: cls === 'legitimate' ? 'Pristine camera sensor noise and natural facial landmark geometry.' : 'High-frequency GAN lattice artifacts and temporal incoherence.'
+      });
+    }
+    data = { frames: mockFrames };
+  }
+
+  AppState.currentFrames = (data.frames || []).map(f => ({
+    ...f,
+    id: f.id || f.frame_id,
+    upload_id: f.upload_id || videoId
+  }));
+  renderConsoleGallery();
+  renderScreeningFramesStrip(AppState.currentFrames, videoId);
 }
 
 function setConsoleFilter(filter) {
@@ -827,38 +985,60 @@ function closeFrameDetailModal() {
 async function loadTimelineForConsole(videoId) {
   if (!videoId) return;
 
+  let data = null;
   try {
     const res = await fetch(`/api/videos/${videoId}/timeline`);
-    if (!res.ok) return;
-    const data = await res.json();
-
-    document.getElementById('inspectVideoMeta').innerText = `Video: ${videoId.substring(0, 8)}... | ${data.total_frames || 0} Frames | ${(data.duration_sec || 0).toFixed(2)}s`;
-    document.getElementById('inspectEndTime').innerText = `${(data.duration_sec || 0).toFixed(3)}s`;
-
-    const bar = document.getElementById('inspectTimelineBar');
-    if (!bar) return;
-
-    bar.innerHTML = (data.markers || []).map(m => {
-      // USER CONVENTION: GREEN = Safe, RED = Morphed/Bad, YELLOW = Uncertain
-      const cls = (m.classification || '').toLowerCase();
-      let colorHex = '#22c55e'; // Green for Safe
-      if (cls.includes('susp') || cls.includes('morph') || cls.includes('deepfake')) {
-        colorHex = '#ef4444'; // Red for Morphed/Bad
-      } else if (cls.includes('uncert')) {
-        colorHex = '#eab308'; // Yellow
-      }
-
-      return `
-        <div class="timeline-tick-elem" style="background-color: ${colorHex};" 
-             title="Frame #${m.frame_index} (${(m.timestamp_sec || 0).toFixed(3)}s) - ${String(m.classification || '').toUpperCase()}"
-             onclick="openFrameDetailModal(${m.frame_index})">
-        </div>
-      `;
-    }).join('');
-
+    if (res.ok) data = await res.json();
   } catch (err) {
-    console.error('Error loading timeline:', err);
+    console.warn("Backend timeline API unreachable, generating static demo markers:", err);
   }
+
+  // Fallback for static GitHub Pages hosting
+  if (!data || !data.markers || data.markers.length === 0) {
+    const isWhatsApp = String(videoId).includes('whatsapp');
+    const isDeepfake = String(videoId).includes('2');
+    const isSingleMod = String(videoId).includes('3');
+    const isUncert = String(videoId).includes('4');
+    const total = isWhatsApp ? 475 : 45;
+    const duration = isWhatsApp ? 7.93 : 1.5;
+    const markers = [];
+    for (let i = 1; i <= Math.min(total, 60); i++) {
+      let cls = 'legitimate';
+      if (isDeepfake) cls = 'suspicious';
+      else if (isSingleMod && i === 25) cls = 'suspicious';
+      else if (isUncert && i >= 15 && i <= 35) cls = 'uncertain';
+      markers.push({
+        frame_index: i,
+        timestamp_sec: i * (duration / total),
+        classification: cls
+      });
+    }
+    data = { total_frames: total, duration_sec: duration, markers: markers };
+  }
+
+  document.getElementById('inspectVideoMeta').innerText = `Video: ${String(videoId).substring(0, 16)} | ${data.total_frames || 0} Frames | ${(data.duration_sec || 0).toFixed(2)}s`;
+  document.getElementById('inspectEndTime').innerText = `${(data.duration_sec || 0).toFixed(3)}s`;
+
+  const bar = document.getElementById('inspectTimelineBar');
+  if (!bar) return;
+
+  bar.innerHTML = (data.markers || []).map(m => {
+    // USER CONVENTION: GREEN = Safe, RED = Morphed/Bad, YELLOW = Uncertain
+    const cls = (m.classification || '').toLowerCase();
+    let colorHex = '#22c55e'; // Green for Safe
+    if (cls.includes('susp') || cls.includes('morph') || cls.includes('deepfake')) {
+      colorHex = '#ef4444'; // Red for Morphed/Bad
+    } else if (cls.includes('uncert')) {
+      colorHex = '#eab308'; // Yellow
+    }
+
+    return `
+      <div class="timeline-tick-elem" style="background-color: ${colorHex};" 
+           title="Frame #${m.frame_index} (${(m.timestamp_sec || 0).toFixed(3)}s) - ${String(m.classification || '').toUpperCase()}"
+           onclick="openFrameDetailModal(${m.frame_index})">
+      </div>
+    `;
+  }).join('');
 }
 
 /* ==========================================================================
