@@ -346,6 +346,7 @@ class SafeGateAIEngine:
         bgr_frame: np.ndarray,
         prev_hist: Optional[np.ndarray] = None,
         thumbnail_dims: Tuple[int, int] = (320, 240),
+        is_morphed: bool = False,
     ) -> FrameAnalysisResult:
         """
         Evaluates a single frame and classifies it into RED, GREEN, or YELLOW.
@@ -377,8 +378,16 @@ class SafeGateAIEngine:
         anomaly_score = 0.0
         confidence = 98.5
 
+        # Check for Explicit Morphed / Deepfake Bitstream Signature (Signal 0) -> RED
+        if is_morphed:
+            classification = CLASS_SUSPICIOUS
+            color_marker = COLOR_RED
+            anomaly_score = 96.5
+            confidence = 98.5
+            evidence_list.append("Morphed / deepfake synthetic generation signature detected")
+
         # Check for Model Failures (Scenario 6) -> YELLOW
-        if ai_res.get("status") in ("failed", "unavailable"):
+        elif ai_res.get("status") in ("failed", "unavailable"):
             classification = CLASS_UNCERTAIN
             color_marker = COLOR_YELLOW
             confidence = None

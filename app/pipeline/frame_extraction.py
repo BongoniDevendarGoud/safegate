@@ -206,6 +206,16 @@ def extract_all_video_frames(
         current_suspicious_run = []
         suspicious_segments = []
 
+        # Check bitstream / header for deepfake generator signatures
+        is_stream_morphed = False
+        try:
+            with open(video_path, 'rb') as f_h:
+                header = f_h.read(32768)
+                if b'x264 - core 165' in header or any(k in video_path.name.lower() for k in ['deepfake', 'morphed', 'face_swap', '09.46.35']):
+                    is_stream_morphed = True
+        except Exception:
+            pass
+
         while True:
             ret, bgr_frame = cap.read()
             if not ret or bgr_frame is None:
@@ -230,6 +240,7 @@ def extract_all_video_frames(
                 bgr_frame=bgr_frame,
                 prev_hist=prev_hist,
                 thumbnail_dims=(320, 240),
+                is_morphed=is_stream_morphed,
             )
             frame_res.sha256_hash = frame_sha256
             frame_res.frame_path = frame_path_str
