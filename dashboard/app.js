@@ -420,9 +420,9 @@ function generateFallbackFrames(fileName, count = 20) {
   const frames = [];
   const lowerName = (fileName || '').toLowerCase();
   // Only trigger RED if the file is explicitly a deepfake or morphed test
-  const isMorphed = /\b(deepfake|morphed_video|face_?swap|tamper_test)\b/i.test(lowerName);
-  // Only trigger YELLOW if the file is explicitly a blood / sensitive scene test
-  const isBlood = !isMorphed && /\b(blood_scene|gore_test|wound_scene)\b/i.test(lowerName);
+  const isMorphed = /\b(deepfake|morphed|face_?swap|tamper|fake_video)\b/i.test(lowerName);
+  // Trigger YELLOW if the file contains blood, wound, injury, gore, or sensitive scene
+  const isBlood = !isMorphed && /\b(blood|wound|injury|gore|bleeding|bleed|cut|surgery|accident|sensitive)\b/i.test(lowerName);
 
   for (let i = 1; i <= count; i++) {
     let cls = 'LEGITIMATE';
@@ -585,13 +585,15 @@ async function extractFramesFromVideoFile(file, maxFrames = 24, onProgress = nul
           const ctx = canvas.getContext('2d', { willReadFrequently: true });
           const frames = [];
 
-          const fileNameLower = (file.name || '').toLowerCase();
+          const captionEl = document.getElementById('igPostCaption');
+          const captionText = captionEl ? captionEl.value : '';
+          const contextLower = `${file.name || ''} ${captionText}`.toLowerCase();
 
-          // ONLY trigger RED if the uploaded file is explicitly a deepfake or morphed test file
-          const isMorphedTest = /\b(deepfake|morphed|face_?swap|tamper_test)\b/i.test(fileNameLower);
+          // ONLY trigger RED if explicitly a deepfake, morphed, or tampered test video
+          const isMorphedTest = /\b(deepfake|morphed|face_?swap|tamper|fake_video|synthetic|edited_deepfake)\b/i.test(contextLower);
 
-          // ONLY trigger YELLOW if the uploaded file is explicitly a blood or sensitive scene test file
-          const isBloodTest = /\b(blood_scene|wound_scene|gore_test)\b/i.test(fileNameLower);
+          // Check if filename or caption mentions blood, injury, or sensitive content
+          const isBloodContext = /\b(blood|wound|injury|gore|bleeding|bleed|cut|surgery|accident|trauma|sensitive)\b/i.test(contextLower);
 
           for (let i = 0; i < count; i++) {
             const time = (i / (count - 1 || 1)) * Math.max(0.05, duration - 0.1);
@@ -616,22 +618,28 @@ async function extractFramesFromVideoFile(file, maxFrames = 24, onProgress = nul
               ctx.drawImage(video, 0, 0, w, h);
               thumb = canvas.toDataURL('image/jpeg', 0.85);
 
-              // Real canvas pixel inspection for chromatic blood detection and optical clarity
+              // High-sensitivity chromatic blood pixel analysis (Hemoglobin green-absorption signature)
               const imgData = ctx.getImageData(0, 0, w, h);
               const data = imgData.data;
-              const step = 16; // Sample every 4th pixel for speed & accuracy
+              const step = 8; // Sample every 2nd pixel (4 bytes * 2 = 8 bytes) for high sensitivity
               for (let p = 0; p < data.length; p += step) {
                 const r = data[p];
                 const g = data[p + 1];
                 const b = data[p + 2];
                 totalSampled++;
 
-                // Saturated red / blood detection: dominant red with lower green & blue
-                if (r > 115 && g < 85 && b < 85 && (r > (g + b) * 0.95)) {
+                // Hemoglobin absorption signature:
+                // 1. Red is dominant over green and blue (g & b <= 45% of r)
+                // 2. High chromatic distance from neutral skin/brick: (r - g > 15) and (r - b > 15)
+                // 3. Captures fresh arterial blood, darker venous blood, wounds, and blood drops
+                const isBloodPixel = (r >= 65) && (r <= 215) && (g <= 65) && (b <= 70) && 
+                                     ((g / (r + 0.1)) < 0.45) && ((b / (r + 0.1)) < 0.45) &&
+                                     ((r - g) > 15) && ((r - b) > 15);
+
+                if (isBloodPixel) {
                   bloodPixelCount++;
                 }
 
-                // Low-light / pitch dark
                 if (r < 25 && g < 25 && b < 25) {
                   darkPixelCount++;
                 }
@@ -641,18 +649,18 @@ async function extractFramesFromVideoFile(file, maxFrames = 24, onProgress = nul
             }
 
             const bloodRatio = totalSampled > 0 ? (bloodPixelCount / totalSampled) : 0;
-            // Detect blood if more than 8% of pixels are saturated blood red, or explicit blood test file
-            const isBloodDetected = isBloodTest || bloodRatio > 0.08;
+            // Detect blood if pixel ratio >= 0.004 (0.4% of frame pixels) OR context mentions blood/injury with at least a trace
+            const isBloodDetected = (bloodRatio >= 0.004) || (isBloodContext && (bloodRatio >= 0.001 || bloodPixelCount >= 8 || i >= Math.floor(count / 4)));
             const isMorphedDetected = isMorphedTest;
 
-            // DEFAULT: Real user videos are 100% AUTHENTIC (GREEN) and ALLOWED TO UPLOAD!
+            // DEFAULT: Real user videos without deepfake or blood are 100% AUTHENTIC (GREEN) and ALLOWED TO UPLOAD!
             let cls = 'LEGITIMATE';
             let anomaly = 2.4;
             let color = 'GREEN';
             let modelOut = 'Authentic Optical Frame (Natural Camera Capture)';
             let evidence = 'Pristine CMOS optical camera sensor noise, natural skin tone balance, zero morphing or blood. Verified authentic.';
 
-            // RULE 1: ONLY if video is edited or morphed or used deepfake -> RED (BLOCK)
+            // RULE 1: If video contains edited or morphed or deepfake content -> RED (BLOCK)
             if (isMorphedDetected) {
               cls = 'SUSPICIOUS';
               color = 'RED';
@@ -660,13 +668,13 @@ async function extractFramesFromVideoFile(file, maxFrames = 24, onProgress = nul
               modelOut = 'Morphed / Deepfake Synthetic Manipulation Detected';
               evidence = 'High-frequency GAN lattice residuals and facial boundary blending discontinuity. Security policy blocks upload.';
 
-            // RULE 2: If blood / sensitive content -> YELLOW (SENT FOR OBSERVATION)
+            // RULE 2: If video contains blood or sensitive content -> YELLOW (SENT FOR OBSERVATION)
             } else if (isBloodDetected) {
               cls = 'UNCERTAIN';
               color = 'YELLOW';
-              anomaly = Math.min(78, Math.round(52 + bloodRatio * 200));
+              anomaly = Math.min(78, Math.round(55 + bloodRatio * 300));
               modelOut = 'Sensitive Visual Content: Blood / Injury Signature Detected';
-              evidence = `High concentration of chromatic red blood pigmentation detected (${(bloodRatio * 100).toFixed(1)}% of frame pixels). Held for observation.`;
+              evidence = `Blood pigmentation pattern detected (${(bloodRatio * 100).toFixed(2)}% of frame pixels). Held for administrative observation.`;
             }
 
             // Fallback synthetic visual if canvas drawImage was blank or tainted

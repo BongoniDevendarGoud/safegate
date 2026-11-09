@@ -319,6 +319,26 @@ class SafeGateAIEngine:
         self.neural_classifier = PyTorchDeepfakeClassifier()
         self.forensic_engine = ForensicSignalEngine()
 
+    @staticmethod
+    def _is_blood_frame(bgr_frame: np.ndarray) -> bool:
+        """
+        Detects chromatic blood pigmentation using hemoglobin green-absorption signature:
+        Red is dominant (r in [65, 210]) with low green & blue (g, b <= 65 and g/r < 0.44, b/r < 0.44).
+        """
+        try:
+            b_ch, g_ch, r_ch = cv2.split(bgr_frame.astype(np.float32))
+            blood_mask = (
+                (r_ch >= 65) & (r_ch <= 210) &
+                (g_ch <= 62) & (b_ch <= 68) &
+                ((g_ch / (r_ch + 0.1)) < 0.44) &
+                ((b_ch / (r_ch + 0.1)) < 0.44) &
+                (r_ch - g_ch > 15) & (r_ch - b_ch > 15)
+            )
+            ratio = np.count_nonzero(blood_mask) / (bgr_frame.shape[0] * bgr_frame.shape[1])
+            return ratio >= 0.005
+        except Exception:
+            return False
+
     def classify_frame(
         self,
         frame_idx: int,
@@ -372,6 +392,15 @@ class SafeGateAIEngine:
             confidence = 52.0
             uncertainty_reason = f"Low-contrast / severe optical blur prevented definitive forensic determination (Laplacian: {lap_var:.1f})"
             evidence_list.append("Inconclusive frame clarity")
+
+        # Check for Sensitive Visual Content (Blood / Injury Signature) -> YELLOW (Sent for Observation)
+        elif self._is_blood_frame(bgr_frame):
+            classification = CLASS_UNCERTAIN
+            color_marker = COLOR_YELLOW
+            confidence = 58.0
+            anomaly_score = 56.0
+            uncertainty_reason = "Sensitive visual content: Chromatic blood pigmentation pattern detected"
+            evidence_list.append("Blood / injury signature detected in frame content. Held for observation.")
 
         # Check for Synthetic / Deepfake Artifacts -> RED (MORPHED / BAD CONTENT)
         else:
