@@ -14,6 +14,12 @@
 > [!IMPORTANT]
 > **Strict Zero-Trust Publishing Rule:** A video is **never** published to the public website feed until it has fully cleared SafeGate's frame-by-frame verification. Quarantined or rejected videos are strictly inaccessible to public users.
 
+> [!WARNING]
+> **Current Operational Status (Phase 2 Prerequisite):**
+> - **Trained Model Checkpoint:** **NOT LOADED.** The codebase currently executes baseline heuristic feature extractors (spatial edge gradients, 2D FFT spectral analysis, optical flow, and color loci).
+> - **Fail-Closed Security Invariant:** SafeGate **never assumes media is safe** and will **never return ALLOW** without a registered, evaluated neural model checkpoint (`has_validated_model=True`). All unverified uploads route to `HUMAN_REVIEW` with reason code `NO_VALIDATED_MODEL`.
+> - **To train and load a production model:** See [docs/RUN_PHASE2.md](docs/RUN_PHASE2.md) for full instructions on dataset preparation, backbone training, calibration, and registration.
+
 ---
 
 ## 1. System Architecture

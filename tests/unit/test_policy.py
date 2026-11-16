@@ -49,21 +49,93 @@ def test_policy_yellow_triggers_human_review() -> None:
     assert decision.yellow_frame_indices == [1]
 
 
-def test_policy_all_green_triggers_allow() -> None:
-    """Verify Priority 3: 100% GREEN frames triggers ALLOW."""
+def test_policy_all_green_triggers_allow_when_model_validated() -> None:
+    """Verify Priority 3: 100% GREEN frames triggers ALLOW only when model is validated and scores vary."""
     engine = ContentPolicyEngine()
     frames = [
-        make_verdict(0, "GREEN"),
-        make_verdict(1, "GREEN"),
-        make_verdict(2, "GREEN"),
+        make_verdict(0, "GREEN", deepfake=0.04),
+        make_verdict(1, "GREEN", deepfake=0.07),
+        make_verdict(2, "GREEN", deepfake=0.05),
     ]
 
-    decision = engine.evaluate(frames)
+    decision = engine.evaluate(
+        frames,
+        detector_type="model",
+        has_validated_model=True,
+        has_calibrated_thresholds=True,
+    )
     assert decision.verdict == "ALLOW"
     assert decision.total_frames == 3
     assert decision.green_frames == 3
     assert decision.red_frames == 0
     assert decision.yellow_frames == 0
+
+
+def test_policy_no_validated_model_routes_to_human_review() -> None:
+    """Verify fail-closed invariant: 100% GREEN frames without a validated model MUST NOT ALLOW."""
+    engine = ContentPolicyEngine()
+    frames = [
+        make_verdict(0, "GREEN", deepfake=0.04),
+        make_verdict(1, "GREEN", deepfake=0.07),
+    ]
+
+    # Without validated model: defaults to heuristic
+    decision = engine.evaluate(frames, has_validated_model=False)
+    assert decision.verdict == "HUMAN_REVIEW"
+    assert decision.metadata["reason_code"] == "NO_VALIDATED_MODEL"
+    assert "NO_VALIDATED_MODEL" in decision.summary_reason
+
+
+def test_policy_uncalibrated_thresholds_routes_to_human_review() -> None:
+    """Verify fail-closed invariant: validated model without calibration run MUST NOT ALLOW."""
+    engine = ContentPolicyEngine()
+    frames = [
+        make_verdict(0, "GREEN", deepfake=0.04),
+        make_verdict(1, "GREEN", deepfake=0.07),
+    ]
+
+    decision = engine.evaluate(
+        frames,
+        detector_type="model",
+        has_validated_model=True,
+        has_calibrated_thresholds=False,
+    )
+    assert decision.verdict == "HUMAN_REVIEW"
+    assert decision.metadata["reason_code"] == "UNCALIBRATED_THRESHOLDS"
+
+
+def test_policy_all_constant_scores_routes_to_human_review() -> None:
+    """Verify fail-closed invariant: all-constant scores across multi-frame video MUST NOT ALLOW."""
+    engine = ContentPolicyEngine()
+    # All 4 frames have flatline identical scores (e.g. 0.0500)
+    frames = [
+        make_verdict(0, "GREEN", deepfake=0.05),
+        make_verdict(1, "GREEN", deepfake=0.05),
+        make_verdict(2, "GREEN", deepfake=0.05),
+        make_verdict(3, "GREEN", deepfake=0.05),
+    ]
+
+    decision = engine.evaluate(
+        frames,
+        detector_type="model",
+        has_validated_model=True,
+        has_calibrated_thresholds=True,
+    )
+    assert decision.verdict == "HUMAN_REVIEW"
+    assert decision.metadata["reason_code"] == "CONSTANT_SCORES_UNINFORMATIVE"
+
+
+def test_policy_nan_inf_scores_fails_closed() -> None:
+    """Verify fail-closed invariant: NaN or Inf frame scores force immediate HUMAN_REVIEW."""
+    engine = ContentPolicyEngine()
+    frames = [
+        make_verdict(0, "GREEN", deepfake=float("nan")),
+        make_verdict(1, "GREEN", deepfake=0.05),
+    ]
+
+    decision = engine.evaluate(frames, has_validated_model=True)
+    assert decision.verdict == "HUMAN_REVIEW"
+    assert decision.metadata["reason_code"] == "NUMERICAL_INSTABILITY"
 
 
 def test_policy_fail_closed_on_empty_frames() -> None:

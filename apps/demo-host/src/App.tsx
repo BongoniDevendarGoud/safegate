@@ -147,6 +147,7 @@ export const App: React.FC = () => {
     greenFrames: number;
     totalFrames: number;
     message: string;
+    reasonCode: string;
   }> => {
     const name = file.name.toLowerCase();
 
@@ -159,6 +160,7 @@ export const App: React.FC = () => {
         greenFrames: 0,
         totalFrames: 1,
         message: "Confirmed deepfake / facial morphing artifacts detected (RED frame).",
+        reasonCode: "SYNTHETIC_DEEPFAKE_MORPH",
       };
     }
 
@@ -170,81 +172,22 @@ export const App: React.FC = () => {
         greenFrames: 0,
         totalFrames: 1,
         message: "Sensitive graphic cues detected (YELLOW frame). Quarantined for review.",
+        reasonCode: "SENSITIVE_CONTENT_FLAG",
       };
     }
 
-    if (name.includes("clean") || name.includes("authentic")) {
-      return {
-        verdict: "ALLOW",
-        redFrames: 0,
-        yellowFrames: 0,
-        greenFrames: 1,
-        totalFrames: 1,
-        message: "Authentic camera capture verified (100% GREEN frames). SafeGate cleared.",
-      };
-    }
-
-    // 2. Real user-uploaded images: inspect pixel channels via canvas
-    if (file.type.startsWith("image/")) {
-      try {
-        const img = new Image();
-        const url = URL.createObjectURL(file);
-        await new Promise<void>((resolve, reject) => {
-          img.onload = () => resolve();
-          img.onerror = () => reject();
-          img.src = url;
-        });
-
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
-        canvas.width = 120;
-        canvas.height = 120;
-        if (ctx) {
-          ctx.drawImage(img, 0, 0, 120, 120);
-          const imgData = ctx.getImageData(0, 0, 120, 120);
-          const d = imgData.data;
-          let bloodCount = 0;
-          let totalCount = 0;
-
-          for (let i = 0; i < d.length; i += 4) {
-            const r = d[i];
-            const g = d[i + 1];
-            const b = d[i + 2];
-            totalCount++;
-            // Dominant red with low blue/green (arterial blood cue)
-            if (r > 155 && g < 70 && b < 70 && (r / (g + b + 1)) > 1.6) {
-              bloodCount++;
-            }
-          }
-
-          URL.revokeObjectURL(url);
-          const bloodRatio = bloodCount / (totalCount || 1);
-          if (bloodRatio > 0.18) {
-            return {
-              verdict: "HUMAN_REVIEW",
-              redFrames: 0,
-              yellowFrames: 1,
-              greenFrames: 0,
-              totalFrames: 1,
-              message: `Sensitive graphic cues detected (${(bloodRatio * 100).toFixed(1)}% high-saturation blood tones). Quarantined for review.`,
-            };
-          }
-        }
-        URL.revokeObjectURL(url);
-      } catch {
-        // Fall through to authentic allow
-      }
-    }
-
-    // 3. Natural user upload (camera capture, landscape, portrait, video) -> verified authentic
+    // 2. Fail-Closed Invariant (High Severity Fix):
+    // In the absence of a registered, trained neural network checkpoint,
+    // the system MUST NOT return ALLOW. It routes strictly to HUMAN_REVIEW.
     const totalFrames = file.type.startsWith("video/") ? 24 : 1;
     return {
-      verdict: "ALLOW",
+      verdict: "HUMAN_REVIEW",
       redFrames: 0,
-      yellowFrames: 0,
-      greenFrames: totalFrames,
+      yellowFrames: totalFrames,
+      greenFrames: 0,
       totalFrames,
-      message: `All ${totalFrames} frames verified clean and authentic (100% GREEN). SafeGate cleared.`,
+      message: "Analysis unavailable, sent for review (NO_VALIDATED_MODEL: no trained neural checkpoint registered).",
+      reasonCode: "NO_VALIDATED_MODEL",
     };
   };
 
@@ -571,6 +514,26 @@ export const App: React.FC = () => {
             ))}
           </div>
 
+          {/* SafeGate Security Invariant Status Banner */}
+          <div
+            style={{
+              padding: "12px 16px",
+              backgroundColor: "#1c1917",
+              border: "1px solid #78350f",
+              borderRadius: "10px",
+              marginBottom: "20px",
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+            }}
+          >
+            <span style={{ fontSize: "20px" }}>🛡️</span>
+            <div style={{ fontSize: "12px", lineHeight: "1.4", color: "#fef3c7" }}>
+              <strong>SafeGate Fail-Closed Security Active:</strong> Baseline heuristic pipeline loaded. No trained deep learning model registered.
+              In accordance with core security invariants, all uploads route to <strong>HUMAN REVIEW</strong> (never auto-cleared as safe).
+            </div>
+          </div>
+
           {/* Feed Posts */}
           <div style={{ display: "flex", flexDirection: "column", gap: "28px" }}>
             {feed.map((post) => (
@@ -617,24 +580,22 @@ export const App: React.FC = () => {
                     </div>
                   </div>
 
-                  {post.safegateCleared && (
-                    <span
-                      style={{
-                        fontSize: "11px",
-                        fontWeight: 700,
-                        padding: "2px 8px",
-                        borderRadius: "10px",
-                        backgroundColor: "#064e3b",
-                        color: "#34d399",
-                        border: "1px solid #059669",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "4px",
-                      }}
-                    >
-                      <span>✓</span> SafeGate Cleared ({post.framesAnalyzed || 1} frames)
-                    </span>
-                  )}
+                  <span
+                    style={{
+                      fontSize: "11px",
+                      fontWeight: 700,
+                      padding: "2px 8px",
+                      borderRadius: "10px",
+                      backgroundColor: "#451a03",
+                      color: "#fde68a",
+                      border: "1px solid #d97706",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px",
+                    }}
+                  >
+                    <span>⏳</span> Pending Review (Unvalidated Model)
+                  </span>
                 </div>
 
                 {/* Media */}
@@ -854,18 +815,31 @@ export const App: React.FC = () => {
               >
                 <div style={{ fontSize: "48px" }}>🟡</div>
                 <h3 style={{ fontSize: "18px", fontWeight: 800, color: "#fbbf24" }}>
-                  Post Held for Safety Review
+                  Analysis unavailable, sent for review
                 </h3>
                 <p style={{ fontSize: "14px", color: "#fde68a", maxWidth: "480px", lineHeight: "1.5" }}>
-                  SafeGate detected sensitive content or blood ({screeningDetails?.yellowFrames ?? 1} YELLOW frame(s)).
-                  Your post has been routed to the moderation console and remains hidden until approved.
+                  {screeningDetails?.message || "Content routed to human review: no validated model or sensitive cue detected."}
                 </p>
+                <div
+                  style={{
+                    padding: "12px 18px",
+                    backgroundColor: "#451a03",
+                    border: "1px solid #b45309",
+                    borderRadius: "8px",
+                    fontSize: "12px",
+                    color: "#fef3c7",
+                    maxWidth: "520px",
+                    lineHeight: "1.4",
+                  }}
+                >
+                  <strong>Fail-Closed Security Invariant:</strong> SafeGate never assumes media is safe and never invents an ALLOW verdict without a registered, evaluated neural model checkpoint. This post is quarantined in the moderation queue.
+                </div>
                 <button
                   onClick={() => setIsCreateModalOpen(false)}
                   style={{
                     marginTop: "12px",
                     padding: "10px 24px",
-                    backgroundColor: "#0095f6",
+                    backgroundColor: "#363636",
                     color: "#ffffff",
                     borderRadius: "8px",
                     border: "none",
@@ -873,7 +847,7 @@ export const App: React.FC = () => {
                     cursor: "pointer",
                   }}
                 >
-                  Understood
+                  Understood (Close)
                 </button>
               </div>
             ) : screeningStatus === "ALLOW" ? (

@@ -94,8 +94,13 @@ class MediaProcessor:
             # 3. Apply temporal confirmation & color assignment (Rule 7)
             verdicts = self.confirmation_engine.evaluate_sequence(fused_frames)
 
-            # 4. Resolve content-level policy (RED > YELLOW > GREEN)
-            decision = self.policy_engine.evaluate(verdicts)
+            # 4. Resolve content-level policy (RED > YELLOW > GREEN) with fail-closed model validation
+            decision = self.policy_engine.evaluate(
+                frame_verdicts=verdicts,
+                detector_type=getattr(self.pipeline, "detector_type", "heuristic"),
+                has_validated_model=getattr(self.pipeline, "has_validated_model", False),
+                has_calibrated_thresholds=getattr(self.pipeline, "has_calibrated_thresholds", False),
+            )
 
             # 5. Persist per-frame analysis records into database in chunks of 250
             frame_records: list[FrameAnalysis] = [
@@ -151,6 +156,10 @@ class MediaProcessor:
                 "yellow_frames": decision.yellow_frames,
                 "green_frames": decision.green_frames,
                 "summary": decision.summary_reason,
+                "detector_type": getattr(self.pipeline, "detector_type", "heuristic"),
+                "model_version": getattr(self.pipeline, "model_version", "0.1.0-heuristic"),
+                "model_checksum": getattr(self.pipeline, "model_checksum", None),
+                "metadata": decision.metadata,
             }
             await record_audit_event(
                 session=session,

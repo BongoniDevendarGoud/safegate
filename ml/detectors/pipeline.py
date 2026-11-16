@@ -32,7 +32,19 @@ class MultiBranchPipeline:
     Coordinates extraction of spatial, spectral, temporal, and sensitive cues for each frame.
     """
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        detector_type: str = "heuristic",
+        model_version: str = "0.1.0-heuristic",
+        model_checksum: str | None = None,
+        has_validated_model: bool = False,
+        has_calibrated_thresholds: bool = False,
+    ) -> None:
+        self.detector_type = detector_type
+        self.model_version = model_version
+        self.model_checksum = model_checksum
+        self.has_validated_model = has_validated_model
+        self.has_calibrated_thresholds = has_calibrated_thresholds
         self.spatial_detector = SpatialDetector()
         self.frequency_detector = FrequencyDetector()
         self.temporal_detector = TemporalDetector()

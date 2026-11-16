@@ -119,8 +119,12 @@ async def test_end_to_end_clean_image_clears_firewall(
     assert resp.status_code == 202
     upload_id = resp.json()["upload_id"]
 
-    # 2. Worker executes multi-branch analysis
+    # 2. Worker executes multi-branch analysis with validated model registered
     processor = MediaProcessor(storage_client=storage)
+    processor.pipeline.has_validated_model = True
+    processor.pipeline.has_calibrated_thresholds = True
+    processor.pipeline.detector_type = "model"
+
     async with session_maker() as session:
         decision = await processor.process_media_file(
             media_path=clean_file,
@@ -171,8 +175,12 @@ async def test_end_to_end_sensitive_image_to_human_moderation_and_approval(
     assert resp.status_code == 202
     upload_id = resp.json()["upload_id"]
 
-    # 2. Worker executes multi-branch analysis
+    # 2. Worker executes multi-branch analysis with validated model registered
     processor = MediaProcessor(storage_client=storage)
+    processor.pipeline.has_validated_model = True
+    processor.pipeline.has_calibrated_thresholds = True
+    processor.pipeline.detector_type = "model"
+
     async with session_maker() as session:
         decision = await processor.process_media_file(
             media_path=blood_file,
@@ -246,8 +254,12 @@ async def test_end_to_end_deepfake_morphed_image_blocked(
     assert resp.status_code == 202
     upload_id = resp.json()["upload_id"]
 
-    # 2. Worker executes multi-branch analysis
+    # 2. Worker executes multi-branch analysis with validated model registered
     processor = MediaProcessor(storage_client=storage)
+    processor.pipeline.has_validated_model = True
+    processor.pipeline.has_calibrated_thresholds = True
+    processor.pipeline.detector_type = "model"
+
     async with session_maker() as session:
         decision = await processor.process_media_file(
             media_path=fake_file,
@@ -272,4 +284,55 @@ async def test_end_to_end_deepfake_morphed_image_blocked(
     assert st_resp.status_code == 200
     st_data = st_resp.json()
     assert st_data["verdict"] in {"BLOCK", "HUMAN_REVIEW"}
+    assert st_data["published_url"] is None
+
+
+@pytest.mark.asyncio
+async def test_end_to_end_unvalidated_model_fails_closed_to_human_review(
+    tmp_path: Path,
+    e2e_context: tuple[httpx.AsyncClient, async_sessionmaker[AsyncSession], Any],
+) -> None:
+    """
+    End-to-end: Clean image uploaded when NO validated model is loaded.
+    Must fail closed to HUMAN_REVIEW with reason NO_VALIDATED_MODEL (never ALLOW).
+    """
+    client, session_maker, storage = e2e_context
+    clean_file = tmp_path / "unval_clean.jpg"
+    create_natural_test_image(clean_file)
+
+    # 1. Ingest clean media
+    with open(clean_file, "rb") as f:
+        resp = await client.post(
+            "/v1/media/upload",
+            files={"file": ("unval_clean.jpg", f, "image/jpeg")},
+            headers={"X-Tenant-ID": "test-e2e-tenant"},
+        )
+    assert resp.status_code == 202
+    upload_id = resp.json()["upload_id"]
+
+    # 2. Worker executes multi-branch analysis WITHOUT validated model (default baseline)
+    processor = MediaProcessor(storage_client=storage)
+    assert processor.pipeline.has_validated_model is False
+
+    async with session_maker() as session:
+        decision = await processor.process_media_file(
+            media_path=clean_file,
+            upload_id=upload_id,
+            session=session,
+            tenant_id="test-e2e-tenant",
+        )
+        await session.commit()
+
+    assert decision.verdict == "HUMAN_REVIEW"
+    assert "NO_VALIDATED_MODEL" in decision.summary_reason
+    assert decision.metadata["reason_code"] == "NO_VALIDATED_MODEL"
+
+    # 3. Check status endpoint confirms HUMAN_REVIEW and NOT published
+    st_resp = await client.get(
+        f"/v1/media/{upload_id}",
+        headers={"X-Tenant-ID": "test-e2e-tenant"},
+    )
+    assert st_resp.status_code == 200
+    st_data = st_resp.json()
+    assert st_data["verdict"] == "HUMAN_REVIEW"
     assert st_data["published_url"] is None

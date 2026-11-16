@@ -83,7 +83,12 @@ async def test_processor_clean_image(
     session.add(upload_rec)
     await session.commit()
 
-    # 4. Process media file
+    # 4. Configure validated model state for clearance test
+    processor.pipeline.has_validated_model = True
+    processor.pipeline.has_calibrated_thresholds = True
+    processor.pipeline.detector_type = "model"
+
+    # Process media file
     decision = await processor.process_media_file(
         media_path=clean_img_path,
         upload_id=upload_id,
@@ -213,3 +218,52 @@ async def test_processor_streaming_multi_frame_video(
     res = await session.execute(stmt)
     records = res.scalars().all()
     assert len(records) == 30
+
+
+@pytest.mark.asyncio
+async def test_processor_unvalidated_model_routes_to_human_review(
+    processor_env: tuple[MediaProcessor, AsyncSession, StorageClient],
+    tmp_path: Path,
+) -> None:
+    """Verify that without a validated model, even clean media routes to HUMAN_REVIEW."""
+    processor, session, storage = processor_env
+    clean_img_path = tmp_path / "clean_unval.jpg"
+    x = np.linspace(60, 180, 160)
+    y = np.linspace(80, 200, 120)
+    xx, yy = np.meshgrid(x, y)
+    img_rgb = np.zeros((120, 160, 3), dtype=np.uint8)
+    img_rgb[:, :, 0] = xx.astype(np.uint8)
+    img_rgb[:, :, 1] = yy.astype(np.uint8)
+    img_rgb[:, :, 2] = ((xx + yy) / 2).astype(np.uint8)
+    np.random.seed(42)
+    noise = np.random.normal(0, 3.0, img_rgb.shape).astype(np.int16)
+    img_rgb = np.clip(img_rgb.astype(np.int16) + noise, 0, 255).astype(np.uint8)
+    cv2.imwrite(str(clean_img_path), cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGR))
+
+    upload_id = "test-upload-unval-01"
+    q_key = f"default-tenant/{upload_id}/clean_unval.jpg"
+    storage.upload_quarantine(key=q_key, data=clean_img_path.read_bytes())
+
+    upload_rec = MediaUpload(
+        id=upload_id,
+        tenant_id="default-tenant",
+        filename="clean_unval.jpg",
+        file_size_bytes=clean_img_path.stat().st_size,
+        mime_type="image/jpeg",
+        sha256_hash="abc_unval",
+        is_video=False,
+        status="QUEUED",
+        verdict="PENDING",
+        quarantine_key=q_key,
+    )
+    session.add(upload_rec)
+    await session.commit()
+
+    decision = await processor.process_media_file(
+        media_path=clean_img_path,
+        upload_id=upload_id,
+        session=session,
+    )
+
+    assert decision.verdict == "HUMAN_REVIEW"
+    assert decision.metadata["reason_code"] == "NO_VALIDATED_MODEL"

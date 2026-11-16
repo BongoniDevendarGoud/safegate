@@ -7,6 +7,7 @@ Guarantees fail-closed safety under all conditions.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import Any
 
@@ -100,9 +101,14 @@ class ContentPolicyEngine:
         frame_verdicts: list[FrameVerdict],
         fail_closed_triggered: bool = False,
         error_context: str | None = None,
+        detector_type: str = "heuristic",
+        has_validated_model: bool = False,
+        has_calibrated_thresholds: bool = False,
     ) -> ContentDecision:
         """
-        Enforces RED > YELLOW > GREEN priority resolution.
+        Enforces RED > YELLOW > GREEN priority resolution with fail-closed security invariants.
+        A verdict can only be ALLOW if detector_type == 'model', a validated model is loaded,
+        and thresholds are empirically calibrated.
         """
         total = len(frame_verdicts)
 
@@ -118,8 +124,29 @@ class ContentPolicyEngine:
                 yellow_frame_indices=[],
                 suspicious_intervals=[],
                 summary_reason=f"Fail-closed policy enforced: {error_context or 'zero decodable frames or worker error'}.",
-                metadata={"fail_closed": True},
+                metadata={"fail_closed": True, "reason_code": "FAIL_CLOSED_ERROR"},
             )
+
+        # Fail-closed guard: check for NaN, Inf, or missing scores
+        for f in frame_verdicts:
+            for score, name in [
+                (f.deepfake_score, "deepfake_score"),
+                (f.sensitive_score, "sensitive_score"),
+                (f.uncertainty_score, "uncertainty_score"),
+            ]:
+                if math.isnan(score) or math.isinf(score):
+                    return ContentDecision(
+                        verdict="HUMAN_REVIEW",
+                        total_frames=total,
+                        red_frames=0,
+                        yellow_frames=total,
+                        green_frames=0,
+                        red_frame_indices=[],
+                        yellow_frame_indices=list(range(total)),
+                        suspicious_intervals=[],
+                        summary_reason=f"Fail-closed policy enforced: invalid numerical value ({name}={score}) at frame {f.frame_index}.",
+                        metadata={"fail_closed": True, "reason_code": "NUMERICAL_INSTABILITY"},
+                    )
 
         red_indices = [f.frame_index for f in frame_verdicts if f.color == "RED"]
         yellow_indices = [f.frame_index for f in frame_verdicts if f.color == "YELLOW"]
@@ -149,7 +176,7 @@ class ContentPolicyEngine:
                 yellow_frame_indices=yellow_indices,
                 suspicious_intervals=red_intervals,
                 summary_reason=reason,
-                metadata={"blocked_at_frame": red_indices[0]},
+                metadata={"blocked_at_frame": red_indices[0], "reason_code": "RED_FRAME_DETECTED"},
             )
 
         # -------------------------------------------------------------
@@ -171,11 +198,69 @@ class ContentPolicyEngine:
                 yellow_frame_indices=yellow_indices,
                 suspicious_intervals=yellow_intervals,
                 summary_reason=reason,
-                metadata={"review_required": True},
+                metadata={"review_required": True, "reason_code": "YELLOW_FRAME_DETECTED"},
             )
 
         # -------------------------------------------------------------
-        # 3. Else (100% of frames are GREEN) -> ALLOW
+        # 3. Model & Calibration Validation Guard:
+        # A verdict can only be ALLOW if detector_type == 'model',
+        # a validated trained model is loaded, and thresholds are calibrated.
+        # -------------------------------------------------------------
+        if detector_type != "model" or not has_validated_model:
+            return ContentDecision(
+                verdict="HUMAN_REVIEW",
+                total_frames=total,
+                red_frames=0,
+                yellow_frames=total,
+                green_frames=0,
+                red_frame_indices=[],
+                yellow_frame_indices=list(range(total)),
+                suspicious_intervals=[],
+                summary_reason="NO_VALIDATED_MODEL: Analysis unavailable with trained model, sent for human review.",
+                metadata={
+                    "fail_closed": True,
+                    "reason_code": "NO_VALIDATED_MODEL",
+                    "detector_type": detector_type,
+                    "has_validated_model": has_validated_model,
+                },
+            )
+
+        if not has_calibrated_thresholds:
+            return ContentDecision(
+                verdict="HUMAN_REVIEW",
+                total_frames=total,
+                red_frames=0,
+                yellow_frames=total,
+                green_frames=0,
+                red_frame_indices=[],
+                yellow_frame_indices=list(range(total)),
+                suspicious_intervals=[],
+                summary_reason="UNCALIBRATED_THRESHOLDS: System thresholds not validated by empirical calibration run.",
+                metadata={"fail_closed": True, "reason_code": "UNCALIBRATED_THRESHOLDS"},
+            )
+
+        # -------------------------------------------------------------
+        # 4. Constant / Flatline Score Guard:
+        # If all frames produce identical constant scores, detector is uninformative
+        # -------------------------------------------------------------
+        if total >= 2:
+            unique_scores = {round(f.deepfake_score, 6) for f in frame_verdicts}
+            if len(unique_scores) == 1:
+                return ContentDecision(
+                    verdict="HUMAN_REVIEW",
+                    total_frames=total,
+                    red_frames=0,
+                    yellow_frames=total,
+                    green_frames=0,
+                    red_frame_indices=[],
+                    yellow_frame_indices=list(range(total)),
+                    suspicious_intervals=[],
+                    summary_reason="CONSTANT_SCORES_UNINFORMATIVE: All frames yielded identical constant scores, sent for human review.",
+                    metadata={"fail_closed": True, "reason_code": "CONSTANT_SCORES_UNINFORMATIVE"},
+                )
+
+        # -------------------------------------------------------------
+        # 5. All criteria met and 100% of frames are GREEN -> ALLOW
         # -------------------------------------------------------------
         return ContentDecision(
             verdict="ALLOW",
@@ -186,6 +271,6 @@ class ContentPolicyEngine:
             red_frame_indices=[],
             yellow_frame_indices=[],
             suspicious_intervals=[],
-            summary_reason=f"Content cleared for publication: all {total} frame(s) verified authentic and clean.",
-            metadata={"cleared_frame_count": total},
+            summary_reason=f"Content cleared for publication: all {total} frame(s) verified authentic and clean by validated model.",
+            metadata={"cleared_frame_count": total, "detector_type": detector_type},
         )

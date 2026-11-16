@@ -29,6 +29,7 @@ from safegate_api.logging import (
 )
 from safegate_api.moderation import router as moderation_router
 from safegate_api.routes import router
+from ml.eval.self_test import run_pipeline_self_test
 
 
 @asynccontextmanager
@@ -36,6 +37,18 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan context manager for startup and shutdown procedures."""
     setup_logging(level="DEBUG" if settings.debug else "INFO", json_output=True)
     logger.info("SafeGate Media-Integrity Firewall API starting up...")
+
+    # Run startup pipeline self-test with fail-closed production gate
+    try:
+        is_prod = getattr(settings, "environment", "development").lower() == "production"
+        self_test_res = run_pipeline_self_test(production_mode=is_prod)
+        logger.info(
+            f"Pipeline Startup Self-Test: {self_test_res.summary} "
+            f"(detector_type={self_test_res.detector_type}, production_ready={self_test_res.production_ready})"
+        )
+    except Exception as st_err:
+        logger.critical(f"Startup self-test aborted application: {st_err}")
+        raise
 
     # For local/testing environments without external migration runners, ensure tables exist if DB is reachable
     try:
