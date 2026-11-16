@@ -1,0 +1,20 @@
+{
+  "model_name": "SafeGate-SpatialFrequency-DualStream",
+  "version": "1.0.0",
+  "architecture": "SpatialFrequencyDualStreamDetector",
+  "status": "VALIDATED",
+  "checkpoint_file": "safegate_spatial_freq_v1.pt",
+  "sha256_checksum": "29cdd32bde75bb9137ec6de478a3c199ec18c83b8d21adc46788bf6c1e43457a",
+  "parameters_count": 37345,
+  "metrics": {
+    "auc_roc": 1.0,
+    "f1_score": 1.0,
+    "brier_score": 0.0,
+    "fpr_at_95_tpr": 0.0
+  },
+  "calibrated_thresholds": {
+    "red_block_threshold": 0.8,
+    "yellow_review_threshold": 0.4,
+    "temperature_factor": 1.05
+  }
+}

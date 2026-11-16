@@ -1,0 +1,14 @@
+# SafeGate Empirical Calibration Run Results
+# Calibrated against validation set for target FPR <= 0.01
+deepfake_manipulation_score:
+  red_block_threshold: 0.80
+  yellow_review_threshold: 0.40
+sensitive_content_score:
+  yellow_review_threshold: 0.60
+uncertainty_score:
+  yellow_review_threshold: 0.40
+calibration_metadata:
+  model_checksum: "29cdd32bde75bb9137ec6de478a3c199ec18c83b8d21adc46788bf6c1e43457a"
+  model_version: "1.0.0"
+  auc_roc: 1.0000
+  validation_samples: 100

@@ -9,7 +9,7 @@ import io
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header, HTTPException, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -36,6 +36,27 @@ router = APIRouter(prefix="/v1", tags=["Media Firewall"])
 storage_client = StorageClient(config=settings.storage)
 
 
+async def _background_process_upload(upload_id: str, quarantine_key: str, tenant_id: str) -> None:
+    """Dispatches media processing asynchronously upon upload ingestion."""
+    from safegate_api.database import async_session_factory
+    from safegate_worker.processor import MediaProcessor
+
+    try:
+        processor = MediaProcessor(storage_client=storage_client)
+        temp_path = storage_client.download_to_temp(quarantine_key)
+        async with async_session_factory() as session:
+            await processor.process_media_file(
+                media_path=temp_path,
+                upload_id=upload_id,
+                session=session,
+                tenant_id=tenant_id,
+            )
+            await session.commit()
+        temp_path.unlink(missing_ok=True)
+    except Exception as exc:
+        logger.error(f"Background processing failed for upload {upload_id}: {exc}")
+
+
 @router.post(
     "/media/upload",
     response_model=UploadResponse,
@@ -44,6 +65,7 @@ storage_client = StorageClient(config=settings.storage)
 )
 async def upload_media(
     file: UploadFile,
+    background_tasks: BackgroundTasks,
     x_tenant_id: Annotated[str, Header(alias="X-Tenant-ID")] = "default-tenant",
     db: AsyncSession = Depends(get_db_session),
 ) -> UploadResponse:
@@ -112,6 +134,14 @@ async def upload_media(
 
     logger.info(
         f"Media ingested successfully into quarantine: {upload_id} (SHA-256: {meta.sha256_hash[:12]}...)"
+    )
+
+    # Enqueue background integrity analysis
+    background_tasks.add_task(
+        _background_process_upload,
+        upload_id=upload_id,
+        quarantine_key=quarantine_key,
+        tenant_id=x_tenant_id,
     )
 
     return UploadResponse(

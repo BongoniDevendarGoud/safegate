@@ -154,3 +154,16 @@ class StorageClient:
         )
         resp = s3.get_object(Bucket=self.config.quarantine_bucket, Key=key)
         return io.BytesIO(resp["Body"].read())
+
+    def download_to_temp(self, key: str, temp_dir: Path | None = None) -> Path:
+        """
+        Extracts a quarantined asset to a local file path for inference/processing.
+        """
+        import tempfile
+
+        t_dir = temp_dir or Path(tempfile.gettempdir())
+        suffix = Path(key).suffix or ".bin"
+        temp_file = t_dir / f"safegate_proc_{Path(key).name}_{suffix}"
+        stream = self.get_quarantined_stream(key)
+        temp_file.write_bytes(stream.read())
+        return temp_file
