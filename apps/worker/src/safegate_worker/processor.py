@@ -18,6 +18,7 @@ from ml.fusion.calibrator import ScoreCalibrator
 from ml.fusion.temporal_confirmation import TemporalConfirmationEngine
 from safegate_api.audit import record_audit_event
 from safegate_api.config import settings
+from safegate_api.errors import MediaDecodeError
 from safegate_api.logging import logger
 from safegate_api.models import FrameAnalysis, MediaUpload
 from safegate_api.storage import StorageClient
@@ -60,7 +61,7 @@ class MediaProcessor:
             try:
                 first_frame = next(frame_gen)
             except StopIteration:
-                raise MediaDecodeError("Media stream contains 0 decodable frames.")
+                raise MediaDecodeError("Media stream contains 0 decodable frames.") from None
 
             try:
                 second_frame = next(frame_gen)

@@ -83,7 +83,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["safegate_api", "safegate_worker", "safegate", "safegate_sdk", "ml"]
+known-first-party = ["safegate_api", "safegate_worker", "safegate", "safegate_sdk", "safegate_instagram", "ml"]
 
 [tool.mypy]
 python_version = "3.11"
@@ -120,7 +120,7 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 minversion = "8.0"
 testpaths = ["tests/unit", "tests/integration"]
-pythonpath = ["apps/api/src", "apps/worker/src", "packages/sdk-python", "."]
+pythonpath = ["apps/api/src", "apps/worker/src", "packages/sdk-python", "packages/instagram-middleware", "."]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
