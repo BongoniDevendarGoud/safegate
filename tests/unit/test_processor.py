@@ -155,3 +155,61 @@ async def test_processor_blood_image_routes_to_human_review(
     assert updated_rec is not None
     assert updated_rec.verdict == "HUMAN_REVIEW"
     assert updated_rec.published_key is None  # Never published
+
+
+@pytest.mark.asyncio
+async def test_processor_streaming_multi_frame_video(
+    processor_env: tuple[MediaProcessor, AsyncSession, StorageClient],
+    tmp_path: Path,
+) -> None:
+    """Verify streaming processing on multi-frame video operates under constant memory."""
+    processor, session, storage = processor_env
+
+    # Synthesize clean 30-frame MP4 video
+    video_path = tmp_path / "stream_test.mp4"
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+    out = cv2.VideoWriter(str(video_path), fourcc, 30.0, (160, 120))
+
+    np.random.seed(42)
+    for f_idx in range(30):
+        frame = np.full((120, 160, 3), fill_value=128, dtype=np.uint8)
+        # Add subtle spatial movement and sensor noise
+        frame[:, :, 0] = np.clip(100 + f_idx * 2 + np.random.normal(0, 2.0, (120, 160)), 0, 255)
+        frame[:, :, 1] = np.clip(120 + np.random.normal(0, 2.0, (120, 160)), 0, 255)
+        frame[:, :, 2] = np.clip(140 + np.random.normal(0, 2.0, (120, 160)), 0, 255)
+        out.write(frame)
+    out.release()
+
+    upload_id = "test-upload-video-stream-01"
+    q_key = f"default-tenant/{upload_id}/stream_test.mp4"
+    storage.upload_quarantine(key=q_key, data=video_path.read_bytes())
+
+    upload_rec = MediaUpload(
+        id=upload_id,
+        tenant_id="default-tenant",
+        filename="stream_test.mp4",
+        file_size_bytes=video_path.stat().st_size,
+        mime_type="video/mp4",
+        sha256_hash="abcvideo123",
+        is_video=True,
+        status="QUEUED",
+        verdict="PENDING",
+        quarantine_key=q_key,
+    )
+    session.add(upload_rec)
+    await session.commit()
+
+    decision = await processor.process_media_file(
+        media_path=video_path,
+        upload_id=upload_id,
+        session=session,
+    )
+
+    assert decision.total_frames == 30
+    assert decision.red_frames == 0
+    assert decision.yellow_frames + decision.green_frames == 30
+
+    stmt = select(FrameAnalysis).where(FrameAnalysis.upload_id == upload_id)
+    res = await session.execute(stmt)
+    records = res.scalars().all()
+    assert len(records) == 30

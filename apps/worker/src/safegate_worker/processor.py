@@ -52,21 +52,43 @@ class MediaProcessor:
         self.pipeline.reset()
 
         try:
-            # 1. Stream & extract all frames
-            raw_frames = list(extract_media_frames(media_path))
-            total_extracted = len(raw_frames)
-            is_single = total_extracted == 1
-
-            # 2. Extract multi-branch features per frame
+            # 1 & 2. Streaming batch processing with immediate pixel buffer release
+            # Avoids OOM by keeping only 1 raw pixel array in memory at any moment
             fused_frames = []
-            for frame_data in raw_frames:
+            frame_gen = extract_media_frames(media_path)
+
+            try:
+                first_frame = next(frame_gen)
+            except StopIteration:
+                raise MediaDecodeError("Media stream contains 0 decodable frames.")
+
+            try:
+                second_frame = next(frame_gen)
+                has_multiple = True
+            except StopIteration:
+                has_multiple = False
+                second_frame = None
+
+            is_single = not has_multiple
+
+            def _process_frame_and_release(fd: Any) -> Any:
                 raw_res = self.pipeline.process_frame(
-                    rgb_frame=frame_data.rgb_array,
-                    frame_index=frame_data.frame_index,
-                    timestamp_ms=frame_data.timestamp_ms,
+                    rgb_frame=fd.rgb_array,
+                    frame_index=fd.frame_index,
+                    timestamp_ms=fd.timestamp_ms,
                 )
-                fused = self.calibrator.calibrate_and_fuse(raw_res, is_single_frame=is_single)
-                fused_frames.append(fused)
+                return self.calibrator.calibrate_and_fuse(raw_res, is_single_frame=is_single)
+
+            fused_frames.append(_process_frame_and_release(first_frame))
+            del first_frame
+
+            if second_frame is not None:
+                fused_frames.append(_process_frame_and_release(second_frame))
+                del second_frame
+
+                for frame_data in frame_gen:
+                    fused_frames.append(_process_frame_and_release(frame_data))
+                    del frame_data
 
             # 3. Apply temporal confirmation & color assignment (Rule 7)
             verdicts = self.confirmation_engine.evaluate_sequence(fused_frames)
@@ -74,10 +96,9 @@ class MediaProcessor:
             # 4. Resolve content-level policy (RED > YELLOW > GREEN)
             decision = self.policy_engine.evaluate(verdicts)
 
-            # 5. Persist per-frame analysis records into database
-            frame_records: list[FrameAnalysis] = []
-            for v in verdicts:
-                rec = FrameAnalysis(
+            # 5. Persist per-frame analysis records into database in chunks of 250
+            frame_records: list[FrameAnalysis] = [
+                FrameAnalysis(
                     upload_id=upload_id,
                     frame_index=v.frame_index,
                     timestamp_ms=v.timestamp_ms,
@@ -87,9 +108,14 @@ class MediaProcessor:
                     uncertainty_score=v.uncertainty_score,
                     cues_json=json.dumps(v.cues),
                 )
-                frame_records.append(rec)
+                for v in verdicts
+            ]
 
-            session.add_all(frame_records)
+            db_chunk_size = 250
+            for i in range(0, len(frame_records), db_chunk_size):
+                chunk = frame_records[i : i + db_chunk_size]
+                session.add_all(chunk)
+                await session.flush()
 
             # 6. Update MediaUpload status and verdict
             stmt = select(MediaUpload).where(MediaUpload.id == upload_id)

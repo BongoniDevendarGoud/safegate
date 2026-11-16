@@ -59,3 +59,10 @@ demo_preview.png
 .idea/
 .DS_Store
 Thumbs.db
+
+# Node / Frontend Artifacts
+node_modules/
+apps/**/node_modules/
+apps/**/dist/
+packages/**/node_modules/
+packages/**/dist/
