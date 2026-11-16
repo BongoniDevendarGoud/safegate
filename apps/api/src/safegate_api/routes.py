@@ -179,7 +179,7 @@ async def get_media_status(
         yellow_frames=entry.yellow_frame_count,
         green_frames=entry.green_frame_count,
         frames=frames_summary,
-        published_url=None,  # Populated only if promoted to published
+        published_url=entry.published_key,
         created_at=entry.created_at.isoformat(),
         completed_at=entry.completed_at.isoformat() if entry.completed_at else None,
     )

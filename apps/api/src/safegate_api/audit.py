@@ -38,6 +38,12 @@ def compute_payload_hash(payload: dict[str, Any]) -> tuple[str, str]:
     return canonical_json, payload_hash
 
 
+def format_audit_timestamp(dt: datetime) -> str:
+    """Normalizes datetime to canonical UTC ISO8601 with Z suffix across all DB backends."""
+    dt = dt.replace(tzinfo=UTC) if dt.tzinfo is None else dt.astimezone(UTC)
+    return dt.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+
+
 def compute_entry_hmac(
     secret: str,
     prev_sig: str,
@@ -84,7 +90,7 @@ async def record_audit_event(
         prev_sig = latest_entry.signature
 
     now = datetime.now(UTC)
-    iso_ts = now.isoformat()
+    iso_ts = format_audit_timestamp(now)
     canonical_json, payload_hash = compute_payload_hash(payload)
 
     signature = compute_entry_hmac(
@@ -161,11 +167,12 @@ async def verify_ledger_integrity(
             )
 
         # Recompute HMAC signature
+        iso_ts = format_audit_timestamp(entry.timestamp)
         computed_sig = compute_entry_hmac(
             secret=secret,
             prev_sig=entry.prev_signature,
             sequence_num=entry.sequence_num,
-            iso_timestamp=entry.timestamp.isoformat(),
+            iso_timestamp=iso_ts,
             event_type=entry.event_type,
             tenant_id=entry.tenant_id,
             payload_hash=entry.payload_hash,

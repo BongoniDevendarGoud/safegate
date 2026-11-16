@@ -49,6 +49,7 @@ class ReviewPackageResponse(BaseModel):
     file_size_bytes: int
     mime_type: str
     sha256_hash: str
+    verdict: str
     total_frames: int
     red_frames: int
     yellow_frames: int
@@ -175,6 +176,7 @@ async def get_review_package(
         file_size_bytes=entry.file_size_bytes,
         mime_type=entry.mime_type,
         sha256_hash=entry.sha256_hash,
+        verdict=entry.verdict,
         total_frames=entry.total_frames,
         red_frames=entry.red_frame_count,
         yellow_frames=entry.yellow_frame_count,
