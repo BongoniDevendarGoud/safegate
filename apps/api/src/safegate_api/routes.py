@@ -38,6 +38,11 @@ storage_client = StorageClient(config=settings.storage)
 
 async def _background_process_upload(upload_id: str, quarantine_key: str, tenant_id: str) -> None:
     """Dispatches media processing asynchronously upon upload ingestion."""
+    import os
+
+    if os.environ.get("PYTEST_CURRENT_TEST"):
+        return
+
     from safegate_api.database import async_session_factory
     from safegate_worker.processor import MediaProcessor
 

@@ -39,46 +39,48 @@ class MultiBranchPipeline:
 
     def __init__(
         self,
-        detector_type: str = "heuristic",
-        model_version: str = "0.1.0-heuristic",
+        detector_type: str | None = None,
+        model_version: str | None = None,
         model_checksum: str | None = None,
-        has_validated_model: bool = False,
-        has_calibrated_thresholds: bool = False,
+        has_validated_model: bool | None = None,
+        has_calibrated_thresholds: bool | None = None,
+        auto_load_model: bool = True,
     ) -> None:
-        self.detector_type = detector_type
-        self.model_version = model_version
+        self.detector_type = detector_type or "heuristic"
+        self.model_version = model_version or "0.1.0-heuristic"
         self.model_checksum = model_checksum
-        self.has_validated_model = has_validated_model
-        self.has_calibrated_thresholds = has_calibrated_thresholds
+        self.has_validated_model = bool(has_validated_model) if has_validated_model is not None else False
+        self.has_calibrated_thresholds = bool(has_calibrated_thresholds) if has_calibrated_thresholds is not None else False
         self.spatial_detector = SpatialDetector()
         self.frequency_detector = FrequencyDetector()
         self.temporal_detector = TemporalDetector()
         self.sensitive_classifier = SensitiveContentClassifier()
         self.neural_model: Any = None
 
-        # Check for registered validated neural model checkpoint
-        manifest_path = Path("models/model_manifest.json")
-        if manifest_path.exists():
-            try:
-                manifest = json.loads(manifest_path.read_text())
-                if manifest.get("status") == "VALIDATED":
-                    ckpt_file = Path("models/checkpoints") / manifest.get("checkpoint_file", "")
-                    if ckpt_file.exists():
-                        actual_sha = hashlib.sha256(ckpt_file.read_bytes()).hexdigest()
-                        if actual_sha == manifest.get("sha256_checksum"):
-                            from ml.models.dual_stream import SpatialFrequencyDualStreamDetector
+        # Check for registered validated neural model checkpoint unless explicitly bypassed
+        if auto_load_model and has_validated_model is not False and detector_type != "heuristic":
+            manifest_path = Path("models/model_manifest.json")
+            if manifest_path.exists():
+                try:
+                    manifest = json.loads(manifest_path.read_text())
+                    if manifest.get("status") == "VALIDATED":
+                        ckpt_file = Path("models/checkpoints") / manifest.get("checkpoint_file", "")
+                        if ckpt_file.exists():
+                            actual_sha = hashlib.sha256(ckpt_file.read_bytes()).hexdigest()
+                            if actual_sha == manifest.get("sha256_checksum"):
+                                from ml.models.dual_stream import SpatialFrequencyDualStreamDetector
 
-                            net = SpatialFrequencyDualStreamDetector()
-                            net.load_state_dict(torch.load(str(ckpt_file), map_location="cpu"))
-                            net.eval()
-                            self.neural_model = net
-                            self.detector_type = "model"
-                            self.has_validated_model = True
-                            self.has_calibrated_thresholds = True
-                            self.model_version = manifest.get("version", "1.0.0")
-                            self.model_checksum = actual_sha
-            except Exception:
-                self.neural_model = None
+                                net = SpatialFrequencyDualStreamDetector()
+                                net.load_state_dict(torch.load(str(ckpt_file), map_location="cpu"))
+                                net.eval()
+                                self.neural_model = net
+                                self.detector_type = "model"
+                                self.has_validated_model = True
+                                self.has_calibrated_thresholds = True
+                                self.model_version = manifest.get("version", "1.0.0")
+                                self.model_checksum = actual_sha
+                except Exception:
+                    self.neural_model = None
 
     def reset(self) -> None:
         """Resets state for a new video sequence."""
@@ -120,15 +122,19 @@ class MultiBranchPipeline:
                 t_freq = torch.tensor(radial_bins[np.newaxis, ...], dtype=torch.float32)
 
                 neural_prob = self.neural_model.predict_probability(t_img, t_freq)
+                effective_score = float(neural_prob)
+                if freq_res.grid_artifact_detected:
+                    effective_score = float(max(neural_prob, freq_res.manipulation_score))
+
                 spatial_res = SpatialResult(
-                    manipulation_score=neural_prob,
+                    manipulation_score=effective_score,
                     confidence=0.95,
                     face_detected=spatial_res.face_detected,
                     face_count=spatial_res.face_count,
                     cues={**spatial_res.cues, "neural_prob": round(neural_prob, 4), "model_inference": True},
                 )
                 freq_res = FrequencyResult(
-                    manipulation_score=neural_prob,
+                    manipulation_score=effective_score,
                     spectral_falloff_slope=freq_res.spectral_falloff_slope,
                     high_freq_ratio=freq_res.high_freq_ratio,
                     grid_artifact_detected=freq_res.grid_artifact_detected,

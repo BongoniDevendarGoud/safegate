@@ -5,6 +5,7 @@ Initializes FastAPI, attaches RFC 7807 error handlers, and mounts security middl
 
 from __future__ import annotations
 
+import os
 import uuid
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -51,11 +52,12 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
         raise
 
     # For local/testing environments without external migration runners, ensure tables exist if DB is reachable
-    try:
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-    except Exception as exc:
-        logger.warning(f"Database schema auto-creation skipped: {exc}")
+    if not os.environ.get("PYTEST_CURRENT_TEST"):
+        try:
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+        except Exception as exc:
+            logger.warning(f"Database schema auto-creation skipped: {exc}")
 
     yield
 

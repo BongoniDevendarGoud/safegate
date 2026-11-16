@@ -58,18 +58,33 @@ def test_score_direction_label_mapping() -> None:
 
 def test_startup_self_test_plumbing_passes_in_dev() -> None:
     """Verifies that synthetic plumbing fixtures run cleanly in development mode."""
-    res = run_pipeline_self_test(production_mode=False)
+    from ml.detectors.pipeline import MultiBranchPipeline
+
+    unval_pipe = MultiBranchPipeline(has_validated_model=False, detector_type="heuristic")
+    res = run_pipeline_self_test(pipeline=unval_pipe, production_mode=False)
     assert res.passed is True
     assert res.positive_score > res.negative_score
-    assert res.production_ready is False  # Because no validated model is loaded yet
+    assert res.production_ready is False  # Because no validated model is loaded
     assert res.details["decision_verdict"] == "HUMAN_REVIEW"
     assert "NO_VALIDATED_MODEL" in res.details["reason"]
 
 
 def test_startup_self_test_refuses_production_without_validated_model() -> None:
     """Verifies that production mode startup refuses to start without a validated model checkpoint."""
+    from ml.detectors.pipeline import MultiBranchPipeline
+
+    unval_pipe = MultiBranchPipeline(has_validated_model=False, detector_type="heuristic")
     with pytest.raises(RuntimeError, match="PRODUCTION GATE REFUSAL"):
-        run_pipeline_self_test(production_mode=True)
+        run_pipeline_self_test(pipeline=unval_pipe, production_mode=True)
+
+
+def test_startup_self_test_passes_production_with_validated_model() -> None:
+    """Verifies that production mode startup succeeds when validated model is present."""
+    res = run_pipeline_self_test(production_mode=True)
+    assert res.passed is True
+    assert res.production_ready is True
+    assert res.has_validated_model is True
+    assert res.detector_type == "model"
 
 
 def test_plumbing_fixture_generation() -> None:

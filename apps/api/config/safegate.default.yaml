@@ -8,7 +8,7 @@ server:
   api_prefix: "/v1"
 
 database:
-  url: "postgresql+asyncpg://safegate_user:safegate_secret_pass@localhost:5432/safegate"
+  url: "sqlite+aiosqlite:///safegate_dev.db"
   pool_size: 20
   max_overflow: 10
   echo: false

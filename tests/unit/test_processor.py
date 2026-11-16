@@ -227,6 +227,9 @@ async def test_processor_unvalidated_model_routes_to_human_review(
 ) -> None:
     """Verify that without a validated model, even clean media routes to HUMAN_REVIEW."""
     processor, session, storage = processor_env
+    from ml.detectors.pipeline import MultiBranchPipeline
+
+    processor.pipeline = MultiBranchPipeline(has_validated_model=False, detector_type="heuristic")
     clean_img_path = tmp_path / "clean_unval.jpg"
     x = np.linspace(60, 180, 160)
     y = np.linspace(80, 200, 120)

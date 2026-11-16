@@ -84,17 +84,22 @@ def create_natural_test_image(path: Path) -> None:
 
 def create_blood_test_image(path: Path) -> None:
     """Creates a test image with dominant red hemoglobin chromaticity (sensitive)."""
-    img_rgb = np.zeros((100, 100, 3), dtype=np.uint8)
-    img_rgb[:, :] = [210, 20, 20]  # Deep arterial blood red in RGB
-    img_bgr = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGR)
-    cv2.imwrite(str(path), img_bgr)
+    img_rgb = np.full((120, 160, 3), fill_value=200, dtype=np.uint8)
+    img_rgb[30:90, 40:120] = [180, 10, 20]  # Deep crimson in RGB
+    cv2.imwrite(str(path), cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGR))
 
 
 def create_manipulated_test_image(path: Path) -> None:
     """Creates a synthetic image with intense artificial grid artifact."""
     img = np.zeros((120, 160, 3), dtype=np.uint8)
-    img[::2, ::2] = 255
-    cv2.imwrite(str(path), img)
+    step = 8
+    for y in range(0, 120, step):
+        for x in range(0, 160, step):
+            if ((x + y) // step) % 2 == 0:
+                img[y : y + step, x : x + step] = [255, 20, 20]
+            else:
+                img[y : y + step, x : x + step] = [20, 255, 255]
+    cv2.imwrite(str(path), cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
 
 
 @pytest.mark.asyncio
@@ -311,7 +316,10 @@ async def test_end_to_end_unvalidated_model_fails_closed_to_human_review(
     upload_id = resp.json()["upload_id"]
 
     # 2. Worker executes multi-branch analysis WITHOUT validated model (default baseline)
-    processor = MediaProcessor(storage_client=storage)
+    from ml.detectors.pipeline import MultiBranchPipeline
+
+    unval_pipe = MultiBranchPipeline(has_validated_model=False, detector_type="heuristic")
+    processor = MediaProcessor(storage_client=storage, pipeline=unval_pipe)
     assert processor.pipeline.has_validated_model is False
 
     async with session_maker() as session:

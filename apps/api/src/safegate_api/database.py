@@ -22,12 +22,17 @@ class Base(DeclarativeBase):
     pass
 
 
+from typing import Any
+
 # Global engine and sessionmaker
+engine_kwargs: dict[str, Any] = {"echo": settings.debug}
+if not settings.database.url.startswith("sqlite"):
+    engine_kwargs["pool_size"] = settings.database.pool_size
+    engine_kwargs["max_overflow"] = settings.database.max_overflow
+
 engine: AsyncEngine = create_async_engine(
     settings.database.url,
-    pool_size=settings.database.pool_size,
-    max_overflow=settings.database.max_overflow,
-    echo=settings.debug,
+    **engine_kwargs,
 )
 
 async_session_factory = async_sessionmaker(

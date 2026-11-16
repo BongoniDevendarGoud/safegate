@@ -20,7 +20,15 @@ class StorageClient:
 
     def __init__(self, config: StorageConfig, local_storage_dir: Path | None = None) -> None:
         self.config = config
-        self.local_storage_dir = local_storage_dir
+        if local_storage_dir is not None:
+            self.local_storage_dir = Path(local_storage_dir)
+        else:
+            try:
+                import boto3  # noqa: F401
+                self.local_storage_dir = None
+            except ImportError:
+                self.local_storage_dir = Path("storage")
+
         if self.local_storage_dir:
             self.local_storage_dir.mkdir(parents=True, exist_ok=True)
             (self.local_storage_dir / "quarantine").mkdir(exist_ok=True)

@@ -31,9 +31,13 @@ class MediaProcessor:
     Coordinates extraction, ML inference, calibration, policy, and persistence.
     """
 
-    def __init__(self, storage_client: StorageClient | None = None) -> None:
+    def __init__(
+        self,
+        storage_client: StorageClient | None = None,
+        pipeline: MultiBranchPipeline | None = None,
+    ) -> None:
         self.storage = storage_client or StorageClient(config=settings.storage)
-        self.pipeline = MultiBranchPipeline()
+        self.pipeline = pipeline or MultiBranchPipeline()
         self.calibrator = ScoreCalibrator()
         self.confirmation_engine = TemporalConfirmationEngine(thresholds=settings.thresholds)
         self.policy_engine = ContentPolicyEngine()
