@@ -1,0 +1,42 @@
+# syntax=docker/dockerfile:1.4
+FROM python:3.11-slim-bookworm AS base
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    ca-certificates \
+    libmagic1 \
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN useradd -m -u 10001 -s /bin/bash safegate
+
+WORKDIR /app
+
+FROM base AS builder
+
+COPY pyproject.toml /app/
+RUN pip install --upgrade pip && \
+    pip install ".[api]"
+
+FROM base AS runner
+
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+
+COPY apps/api /app/apps/api
+COPY docs /app/docs
+
+RUN chown -R safegate:safegate /app
+USER safegate
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/healthz || exit 1
+
+CMD ["python", "-m", "uvicorn", "safegate_api.main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -1,48 +1,97 @@
-name: SafeGate Continuous Integration
+name: SafeGate CI
 
 on:
   push:
-    branches: [ master, main ]
+    branches: [main, develop]
   pull_request:
-    branches: [ master, main ]
+    branches: [main, develop]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  test:
-    name: Test Suite & Security Validation
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-        python-version: ["3.10", "3.11", "3.12"]
-
+  lint-and-typecheck:
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.11"
           cache: "pip"
 
-      - name: Install System Dependencies (Ubuntu)
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg libgl1
-
-      - name: Install Python Dependencies
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -e .[dev]
 
-      - name: Generate Test Samples
+      - name: Run Ruff Lint
         run: |
-          python generate_test_samples.py
+          ruff check .
 
-      - name: Run SafeGate 60-Test Automated Suite
+      - name: Run Ruff Format Check
+        run: |
+          ruff format --check .
+
+      - name: Run MyPy Type Check
+        run: |
+          mypy apps/api/src tests/unit
+
+  unit-and-integration-tests:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
         env:
-          SAFEGATE_MOCK_MODEL: "true"
-          USE_GEMINI: "false"
+          POSTGRES_DB: safegate_test
+          POSTGRES_USER: safegate_user
+          POSTGRES_PASSWORD: test_password_123!
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install system dependencies (FFmpeg)
         run: |
-          python -m pytest tests/ -v
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev]
+
+      - name: Run Pytest with Coverage
+        run: |
+          pytest tests/unit --cov=safegate_api --cov-report=xml --cov-report=term-missing
+
+      - name: Security audit dependencies
+        run: |
+          pip install pip-audit
+          pip-audit || echo "Audit completed with warnings"

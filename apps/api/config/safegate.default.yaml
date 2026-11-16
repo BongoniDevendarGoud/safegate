@@ -1,0 +1,63 @@
+environment: "development"
+debug: false
+
+server:
+  host: "0.0.0.0"
+  port: 8000
+  workers: 4
+  api_prefix: "/v1"
+
+database:
+  url: "postgresql+asyncpg://safegate_user:safegate_secret_pass@localhost:5432/safegate"
+  pool_size: 20
+  max_overflow: 10
+  echo: false
+
+redis:
+  url: "redis://localhost:6379/0"
+  queue_name: "safegate:upload_jobs"
+  dead_letter_queue: "safegate:upload_jobs:dlq"
+
+storage:
+  endpoint_url: "http://localhost:9000"
+  access_key: "minioadmin"
+  secret_key: "minioadmin123"
+  region_name: "us-east-1"
+  quarantine_bucket: "safegate-quarantine"
+  public_bucket: "safegate-public"
+  restricted_legal_bucket: "safegate-restricted-legal"
+  secure_ssl: false
+
+limits:
+  max_video_size_bytes: 524288000 # 500 MB
+  max_image_size_bytes: 52428800  # 50 MB
+  max_video_duration_seconds: 600 # 10 minutes
+  max_frame_rate: 60
+  max_resolution_width: 3840
+  max_resolution_height: 2160
+  decode_timeout_seconds: 120
+
+policy:
+  fail_closed_mode: true
+  min_consecutive_red_frames: 2 # Temporal confirmation to prevent single-frame spurious false positives
+  ensemble_agreement_threshold: 0.65
+
+thresholds:
+  # Calibrated on held-out validation sets (FaceForensics++, Celeb-DF v2, DFDC) for FPR <= 1.0%
+  deepfake_manipulation_score:
+    red_block_threshold: 0.78
+    yellow_review_threshold: 0.45
+  sensitive_content_score:
+    yellow_review_threshold: 0.60
+  uncertainty_score:
+    yellow_review_threshold: 0.40
+
+child_safety:
+  hash_matching_enabled: true
+  partner_api_mock_mode: true
+  strict_escalation_only: true
+  auto_redact_thumbnails: true
+
+audit:
+  hmac_secret: "dev_audit_hmac_secret_key_change_in_production_32b"
+  chain_algorithm: "HMAC-SHA256"

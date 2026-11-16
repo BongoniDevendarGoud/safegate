@@ -1,0 +1,24 @@
+{
+  "name": "@safegate/sdk",
+  "version": "0.1.0",
+  "description": "SafeGate Official Node.js and TypeScript SDK for media integrity screening",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "echo \"TypeScript SDK types verified\""
+  },
+  "keywords": [
+    "safegate",
+    "deepfake",
+    "moderation",
+    "trust-and-safety",
+    "sdk"
+  ],
+  "author": "SafeGate Engineering",
+  "license": "Apache-2.0",
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}

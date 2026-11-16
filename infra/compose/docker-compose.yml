@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: safegate-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-safegate}
+      POSTGRES_USER: ${POSTGRES_USER:-safegate}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-safegate_dev_secret}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U safegate -d safegate"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: safegate-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-safegate_dev_redis}"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-safegate_dev_redis}", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:RELEASE.2024-01-18T22-51-28Z
+    container_name: safegate-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.api
+    container_name: safegate-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    environment:
+      SAFEGATE__DATABASE__URL: postgresql+asyncpg://safegate:safegate_dev_secret@postgres:5432/safegate
+      SAFEGATE__REDIS__URL: redis://:safegate_dev_redis@redis:6379/0
+      SAFEGATE__STORAGE__ENDPOINT_URL: http://minio:9000
+      SAFEGATE__STORAGE__ACCESS_KEY: minioadmin
+      SAFEGATE__STORAGE__SECRET_KEY: minioadmin123
+      SAFEGATE__STORAGE__QUARANTINE_BUCKET: safegate-quarantine
+      SAFEGATE__STORAGE__PUBLISHED_BUCKET: safegate-published
+      SAFEGATE__STORAGE__SECURE_VAULT_BUCKET: safegate-vault
+      SAFEGATE__AUDIT__HMAC_SECRET: dev_super_secret_audit_key_32_bytes_min
+    volumes:
+      - ../../apps/api:/app/apps/api
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
