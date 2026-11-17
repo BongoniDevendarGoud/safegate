@@ -175,3 +175,16 @@ class StorageClient:
         stream = self.get_quarantined_stream(key)
         temp_file.write_bytes(stream.read())
         return temp_file
+
+    def get_asset_path(self, key: str) -> Path | None:
+        """
+        Locates the physical asset file path across quarantine or published storage.
+        """
+        if self.local_storage_dir:
+            p_quar = self.local_storage_dir / "quarantine" / key
+            if p_quar.exists():
+                return p_quar
+            p_pub = self.local_storage_dir / "published" / key
+            if p_pub.exists():
+                return p_pub
+        return None

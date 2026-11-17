@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { ExtractedFramesViewer, FrameAnalysisItem } from "./components/ExtractedFramesViewer";
 
 interface PostItem {
   id: string;
@@ -13,6 +14,11 @@ interface PostItem {
   timestamp: string;
   safegateCleared?: boolean;
   framesAnalyzed?: number;
+  uploadId?: string;
+  frames?: FrameAnalysisItem[];
+  redFrames?: number;
+  yellowFrames?: number;
+  greenFrames?: number;
 }
 
 export const App: React.FC = () => {
@@ -58,13 +64,16 @@ export const App: React.FC = () => {
     "IDLE" | "SCREENING" | "ALLOW" | "HUMAN_REVIEW" | "BLOCK"
   >("IDLE");
   const [screeningDetails, setScreeningDetails] = useState<{
+    uploadId?: string;
     verdict?: string;
     totalFrames?: number;
     redFrames?: number;
     yellowFrames?: number;
     greenFrames?: number;
+    frames?: FrameAnalysisItem[];
     message?: string;
   } | null>(null);
+  const [inspectingPost, setInspectingPost] = useState<PostItem | null>(null);
 
   const stories = [
     { username: "your_story", avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80", isUser: true },
@@ -140,107 +149,6 @@ export const App: React.FC = () => {
     return new File([blob], `${type}_test_media.jpg`, { type: "image/jpeg" });
   };
 
-  const inspectMediaIntegrity = async (file: File): Promise<{
-    verdict: "ALLOW" | "HUMAN_REVIEW" | "BLOCK";
-    redFrames: number;
-    yellowFrames: number;
-    greenFrames: number;
-    totalFrames: number;
-    message: string;
-    reasonCode: string;
-  }> => {
-    const name = file.name.toLowerCase();
-
-    // 1. Explicit developer benchmark scenarios
-    if (name.includes("morphed") || name.includes("deepfake")) {
-      return {
-        verdict: "BLOCK",
-        redFrames: 1,
-        yellowFrames: 0,
-        greenFrames: 0,
-        totalFrames: 1,
-        message: "Confirmed deepfake / facial morphing artifacts detected (RED frame).",
-        reasonCode: "SYNTHETIC_DEEPFAKE_MORPH",
-      };
-    }
-
-    if (name.includes("blood") || name.includes("sensitive")) {
-      return {
-        verdict: "HUMAN_REVIEW",
-        redFrames: 0,
-        yellowFrames: 1,
-        greenFrames: 0,
-        totalFrames: 1,
-        message: "Sensitive graphic cues detected (YELLOW frame). Quarantined for review.",
-        reasonCode: "SENSITIVE_CONTENT_FLAG",
-      };
-    }
-
-    // 2. Inspect real image channels for blood or synthetic anomalies
-    if (file.type.startsWith("image/")) {
-      try {
-        const img = new Image();
-        const url = URL.createObjectURL(file);
-        await new Promise<void>((resolve, reject) => {
-          img.onload = () => resolve();
-          img.onerror = () => reject();
-          img.src = url;
-        });
-
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
-        canvas.width = 120;
-        canvas.height = 120;
-        if (ctx) {
-          ctx.drawImage(img, 0, 0, 120, 120);
-          const imgData = ctx.getImageData(0, 0, 120, 120);
-          const d = imgData.data;
-          let bloodCount = 0;
-          let totalCount = 0;
-
-          for (let i = 0; i < d.length; i += 4) {
-            const r = d[i];
-            const g = d[i + 1];
-            const b = d[i + 2];
-            totalCount++;
-            if (r > 155 && g < 70 && b < 70 && r / (g + b + 1) > 1.6) {
-              bloodCount++;
-            }
-          }
-
-          URL.revokeObjectURL(url);
-          const bloodRatio = bloodCount / (totalCount || 1);
-          if (bloodRatio > 0.18) {
-            return {
-              verdict: "HUMAN_REVIEW",
-              redFrames: 0,
-              yellowFrames: 1,
-              greenFrames: 0,
-              totalFrames: 1,
-              message: `Sensitive graphic cues detected (${(bloodRatio * 100).toFixed(1)}% high-saturation blood tones). Quarantined for review.`,
-              reasonCode: "SENSITIVE_CONTENT_FLAG",
-            };
-          }
-        }
-        URL.revokeObjectURL(url);
-      } catch {
-        // Fall through to authentic allow
-      }
-    }
-
-    // 3. Genuine authentic content (Validated dual-stream model verified)
-    const totalFrames = file.type.startsWith("video/") ? 24 : 1;
-    return {
-      verdict: "ALLOW",
-      redFrames: 0,
-      yellowFrames: 0,
-      greenFrames: totalFrames,
-      totalFrames,
-      message: `All ${totalFrames} frames verified clean and authentic (100% GREEN) by SafeGate dual-stream neural model.`,
-      reasonCode: "NEURAL_MODEL_VERIFIED_ALLOW",
-    };
-  };
-
   const handleShareToInstagram = async () => {
     if (!selectedFile) return;
 
@@ -265,19 +173,23 @@ export const App: React.FC = () => {
         const upJson = await uploadResp.json();
         const uploadId = upJson.upload_id;
 
-        // Poll for backend completion (up to 5 seconds)
-        for (let attempt = 0; attempt < 8; attempt++) {
-          await new Promise((r) => setTimeout(r, 600));
-          const stResp = await fetch(`/v1/media/${uploadId}`, {
-            headers: { "X-Tenant-ID": "instagram-production-firewall" },
-          });
-          if (stResp.ok) {
-            const stJson = await stResp.json();
-            if (stJson.status === "COMPLETED" && stJson.verdict !== "PENDING") {
-              backendVerdict = stJson.verdict;
-              backendData = stJson;
-              break;
+        // Poll for backend completion (up to 30 seconds)
+        for (let attempt = 0; attempt < 60; attempt++) {
+          await new Promise((r) => setTimeout(r, 500));
+          try {
+            const stResp = await fetch(`/v1/media/${uploadId}`, {
+              headers: { "X-Tenant-ID": "instagram-production-firewall" },
+            });
+            if (stResp.ok) {
+              const stJson = await stResp.json();
+              if (stJson.status === "COMPLETED" && stJson.verdict !== "PENDING") {
+                backendVerdict = stJson.verdict;
+                backendData = stJson;
+                break;
+              }
             }
+          } catch (err) {
+            console.warn("Poll fetch retry:", err);
           }
         }
       }
@@ -285,32 +197,35 @@ export const App: React.FC = () => {
       // Backend request fallback
     }
 
-    // 2. If backend produced a verdict, apply it; otherwise use model inspection
+    // 2. Resolve authoritative firewall verdict with strict fail-closed guarantee
     let finalVerdict: "ALLOW" | "HUMAN_REVIEW" | "BLOCK";
     let details: any;
 
     if (backendVerdict && (backendVerdict === "ALLOW" || backendVerdict === "HUMAN_REVIEW" || backendVerdict === "BLOCK")) {
       finalVerdict = backendVerdict;
+      const isAllow = backendVerdict === "ALLOW";
+      const isBlock = backendVerdict === "BLOCK";
       details = {
+        uploadId: backendData?.upload_id,
         verdict: backendVerdict,
         totalFrames: backendData?.total_frames || 1,
         redFrames: backendData?.red_frames || 0,
         yellowFrames: backendData?.yellow_frames || 0,
-        greenFrames: backendData?.green_frames || 1,
-        message: backendData?.summary || "Firewall verification complete.",
+        greenFrames: backendData?.green_frames || 0,
+        frames: backendData?.frames || [],
+        message: backendData?.summary || (isAllow ? `All ${backendData?.total_frames || 1} frames verified clean and authentic (100% GREEN) by SafeGate dual-stream model.` : isBlock ? `Confirmed synthetic/deepfake manipulation detected (${backendData?.red_frames || 1} RED frames). Upload blocked.` : `Content quarantined: Sensitive cues detected (${backendData?.yellow_frames || 1} YELLOW frames). Forwarded to moderation team.`),
       };
     } else {
-      // Client-side neural fallback
-      await new Promise((r) => setTimeout(r, 1000));
-      const inspection = await inspectMediaIntegrity(selectedFile);
-      finalVerdict = inspection.verdict;
+      // Fail closed: Never guess or invent an ALLOW verdict on missing backend data
+      finalVerdict = "HUMAN_REVIEW";
       details = {
-        verdict: inspection.verdict,
-        totalFrames: inspection.totalFrames,
-        redFrames: inspection.redFrames,
-        yellowFrames: inspection.yellowFrames,
-        greenFrames: inspection.greenFrames,
-        message: inspection.message,
+        verdict: "HUMAN_REVIEW",
+        totalFrames: 1,
+        redFrames: 0,
+        yellowFrames: 1,
+        greenFrames: 0,
+        frames: [],
+        message: "Analysis unavailable or screening timed out. Content quarantined for review under fail-closed security protocol.",
       };
     }
 
@@ -332,6 +247,11 @@ export const App: React.FC = () => {
         timestamp: "JUST NOW",
         safegateCleared: true,
         framesAnalyzed: details.totalFrames,
+        uploadId: details.uploadId,
+        frames: details.frames,
+        redFrames: details.redFrames,
+        yellowFrames: details.yellowFrames,
+        greenFrames: details.greenFrames,
       };
       setFeed((prev) => [newPost, ...prev]);
     }
@@ -671,22 +591,41 @@ export const App: React.FC = () => {
                     </div>
                   </div>
 
-                  <span
-                    style={{
-                      fontSize: "11px",
-                      fontWeight: 700,
-                      padding: "2px 8px",
-                      borderRadius: "10px",
-                      backgroundColor: "#451a03",
-                      color: "#fde68a",
-                      border: "1px solid #d97706",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "4px",
-                    }}
-                  >
-                    <span>⏳</span> Pending Review (Unvalidated Model)
-                  </span>
+                  {post.safegateCleared ? (
+                    <span
+                      style={{
+                        fontSize: "11px",
+                        fontWeight: 700,
+                        padding: "2px 8px",
+                        borderRadius: "10px",
+                        backgroundColor: "#052e16",
+                        color: "#86efac",
+                        border: "1px solid #16a34a",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px",
+                      }}
+                    >
+                      <span>🛡️</span> Cleared by SafeGate ({post.framesAnalyzed || 1} frames)
+                    </span>
+                  ) : (
+                    <span
+                      style={{
+                        fontSize: "11px",
+                        fontWeight: 700,
+                        padding: "2px 8px",
+                        borderRadius: "10px",
+                        backgroundColor: "#451a03",
+                        color: "#fde68a",
+                        border: "1px solid #d97706",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px",
+                      }}
+                    >
+                      <span>⏳</span> Pending Review (Unvalidated Model)
+                    </span>
+                  )}
                 </div>
 
                 {/* Media */}
@@ -732,6 +671,29 @@ export const App: React.FC = () => {
                     <span style={{ fontWeight: 700, marginRight: "6px" }}>{post.username}</span>
                     <span>{post.caption}</span>
                   </div>
+
+                  {/* Extracted Frames Inspect Action */}
+                  {post.frames && post.frames.length > 0 && (
+                    <button
+                      onClick={() => setInspectingPost(post)}
+                      style={{
+                        marginTop: "10px",
+                        padding: "6px 14px",
+                        backgroundColor: "#18181b",
+                        border: "1px solid #38bdf8",
+                        borderRadius: "8px",
+                        color: "#38bdf8",
+                        fontSize: "12px",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "6px",
+                      }}
+                    >
+                      <span>🎞️</span> Inspect Extracted Frames ({post.frames.length} frames)
+                    </button>
+                  )}
                 </div>
               </article>
             ))}
@@ -759,8 +721,11 @@ export const App: React.FC = () => {
             style={{
               backgroundColor: "#262626",
               borderRadius: "14px",
-              width: "720px",
-              maxWidth: "92vw",
+              width: "920px",
+              maxWidth: "96vw",
+              maxHeight: "92vh",
+              display: "flex",
+              flexDirection: "column",
               overflow: "hidden",
               border: "1px solid #363636",
               boxShadow: "0 12px 40px rgba(0,0,0,0.8)",
@@ -802,7 +767,8 @@ export const App: React.FC = () => {
               )}
             </div>
 
-            {/* Modal Body */}
+            {/* Modal Scrollable Body */}
+            <div style={{ flex: 1, overflowY: "auto" }}>
             {screeningStatus === "SCREENING" ? (
               <div
                 style={{
@@ -873,6 +839,21 @@ export const App: React.FC = () => {
                 >
                   In accordance with zero-false-allow policies, this post will NEVER be published to your feed or public CDN.
                 </div>
+
+                {/* Extracted Frames & Forensic Inspector */}
+                {screeningDetails?.frames && screeningDetails.frames.length > 0 && (
+                  <ExtractedFramesViewer
+                    uploadId={screeningDetails.uploadId}
+                    totalFrames={screeningDetails.totalFrames ?? screeningDetails.frames.length}
+                    redFrames={screeningDetails.redFrames ?? 0}
+                    yellowFrames={screeningDetails.yellowFrames ?? 0}
+                    greenFrames={screeningDetails.greenFrames ?? 0}
+                    frames={screeningDetails.frames}
+                    previewUrl={previewUrl}
+                    isVideo={isVideo}
+                  />
+                )}
+
                 <button
                   onClick={() => {
                     setSelectedFile(null);
@@ -925,6 +906,21 @@ export const App: React.FC = () => {
                 >
                   <strong>Fail-Closed Security Invariant:</strong> SafeGate never assumes media is safe and never invents an ALLOW verdict without a registered, evaluated neural model checkpoint. This post is quarantined in the moderation queue.
                 </div>
+
+                {/* Extracted Frames & Forensic Inspector */}
+                {screeningDetails?.frames && screeningDetails.frames.length > 0 && (
+                  <ExtractedFramesViewer
+                    uploadId={screeningDetails.uploadId}
+                    totalFrames={screeningDetails.totalFrames ?? screeningDetails.frames.length}
+                    redFrames={screeningDetails.redFrames ?? 0}
+                    yellowFrames={screeningDetails.yellowFrames ?? 0}
+                    greenFrames={screeningDetails.greenFrames ?? 0}
+                    frames={screeningDetails.frames}
+                    previewUrl={previewUrl}
+                    isVideo={isVideo}
+                  />
+                )}
+
                 <button
                   onClick={() => setIsCreateModalOpen(false)}
                   style={{
@@ -960,6 +956,20 @@ export const App: React.FC = () => {
                   SafeGate verified 100% of frames ({screeningDetails?.greenFrames ?? 1} green, 0 red, 0 yellow).
                   Your post is now live on Instagram!
                 </p>
+
+                {/* Extracted Frames & Forensic Inspector */}
+                {screeningDetails?.frames && screeningDetails.frames.length > 0 && (
+                  <ExtractedFramesViewer
+                    uploadId={screeningDetails.uploadId}
+                    totalFrames={screeningDetails.totalFrames ?? screeningDetails.frames.length}
+                    redFrames={screeningDetails.redFrames ?? 0}
+                    yellowFrames={screeningDetails.yellowFrames ?? 0}
+                    greenFrames={screeningDetails.greenFrames ?? 0}
+                    frames={screeningDetails.frames}
+                    previewUrl={previewUrl}
+                    isVideo={isVideo}
+                  />
+                )}
                 <button
                   onClick={() => setIsCreateModalOpen(false)}
                   style={{
@@ -1249,6 +1259,72 @@ export const App: React.FC = () => {
                 </div>
               </div>
             )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 4. Post Frames Inspector Modal */}
+      {inspectingPost && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.85)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1100,
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: "#262626",
+              borderRadius: "14px",
+              width: "920px",
+              maxWidth: "96vw",
+              maxHeight: "92vh",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+              border: "1px solid #363636",
+              boxShadow: "0 12px 40px rgba(0,0,0,0.8)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                padding: "14px 20px",
+                borderBottom: "1px solid #363636",
+              }}
+            >
+              <h2 style={{ fontSize: "16px", fontWeight: 700, margin: 0, color: "#f4f4f5" }}>
+                Forensic Inspection: {inspectingPost.caption ? (inspectingPost.caption.slice(0, 45) + "...") : inspectingPost.username}
+              </h2>
+              <button
+                onClick={() => setInspectingPost(null)}
+                style={{ background: "none", border: "none", color: "#a8a8a8", fontSize: "18px", cursor: "pointer" }}
+              >
+                ✕
+              </button>
+            </div>
+            <div style={{ flex: 1, overflowY: "auto", padding: "16px" }}>
+              <ExtractedFramesViewer
+                uploadId={inspectingPost.uploadId}
+                totalFrames={inspectingPost.framesAnalyzed || inspectingPost.frames?.length || 1}
+                redFrames={inspectingPost.redFrames || 0}
+                yellowFrames={inspectingPost.yellowFrames || 0}
+                greenFrames={inspectingPost.greenFrames || 0}
+                frames={inspectingPost.frames || []}
+                previewUrl={inspectingPost.mediaUrl}
+                isVideo={inspectingPost.isVideo}
+              />
+            </div>
           </div>
         </div>
       )}

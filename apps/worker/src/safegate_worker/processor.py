@@ -13,6 +13,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ml.detectors.gemini_verifier import GeminiMultimodalVerifier
 from ml.detectors.pipeline import MultiBranchPipeline
 from ml.fusion.calibrator import ScoreCalibrator
 from ml.fusion.temporal_confirmation import TemporalConfirmationEngine
@@ -41,6 +42,7 @@ class MediaProcessor:
         self.calibrator = ScoreCalibrator()
         self.confirmation_engine = TemporalConfirmationEngine(thresholds=settings.thresholds)
         self.policy_engine = ContentPolicyEngine()
+        self.gemini_verifier = GeminiMultimodalVerifier()
 
     async def process_media_file(
         self,
@@ -106,6 +108,38 @@ class MediaProcessor:
                 has_calibrated_thresholds=getattr(self.pipeline, "has_calibrated_thresholds", False),
             )
 
+            # 4b. Multimodal AI verification pass (Google Gemini 3.5 Flash) on suspicious frames
+            gemini_metadata: dict[str, Any] = {}
+            if self.gemini_verifier.is_configured and (decision.red_frames > 0 or decision.yellow_frames > 0):
+                try:
+                    candidate_indices = [v.frame_index for v in verdicts if v.color in ("RED", "YELLOW")][:4]
+                    if candidate_indices:
+                        cap = cv2.VideoCapture(str(media_path))
+                        candidate_rgbs = []
+                        for c_idx in candidate_indices:
+                            cap.set(cv2.CAP_PROP_POS_FRAMES, c_idx)
+                            r, cf = cap.read()
+                            if r and cf is not None:
+                                candidate_rgbs.append(cv2.cvtColor(cf, cv2.COLOR_BGR2RGB))
+                        cap.release()
+                        if candidate_rgbs:
+                            gem_res = self.gemini_verifier.analyze_candidate_frames(candidate_rgbs)
+                            if gem_res.available:
+                                gemini_metadata = {
+                                    "gemini_verified": True,
+                                    "is_manipulated": gem_res.is_manipulated,
+                                    "manipulation_score": gem_res.manipulation_score,
+                                    "explanation": gem_res.explanation,
+                                    "detected_artifacts": gem_res.detected_artifacts,
+                                }
+                                for v in verdicts:
+                                    if v.frame_index in candidate_indices:
+                                        v.cues["gemini_ai"] = gemini_metadata
+                                if gem_res.is_manipulated:
+                                    logger.info(f"Gemini verified manipulation: {gem_res.explanation}")
+                except Exception as g_err:
+                    logger.warning(f"Gemini verification pass warning: {g_err}")
+
             # 5. Persist per-frame analysis records into database in chunks of 250
             frame_records: list[FrameAnalysis] = [
                 FrameAnalysis(
@@ -152,6 +186,9 @@ class MediaProcessor:
                     except Exception as stor_err:
                         logger.error(f"Storage promotion failed for upload {upload_id}: {stor_err}")
 
+            if gemini_metadata:
+                decision.metadata["gemini_ai"] = gemini_metadata
+
             # 7. Append immutable audit ledger record
             audit_payload: dict[str, Any] = {
                 "verdict": decision.verdict,
@@ -185,6 +222,10 @@ class MediaProcessor:
             logger.exception(
                 f"Fail-closed triggered during processing of upload '{upload_id}': {exc}"
             )
+            try:
+                await session.rollback()
+            except Exception:
+                pass
             fail_decision = self.policy_engine.evaluate(
                 frame_verdicts=[],
                 fail_closed_triggered=True,

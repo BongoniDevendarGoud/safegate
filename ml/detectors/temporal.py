@@ -31,11 +31,13 @@ class TemporalDetector:
     def __init__(self) -> None:
         self.prev_gray: np.ndarray | None = None
         self.prev_flow_mag: float | None = None
+        self.consecutive_frozen_frames: int = 0
 
     def reset(self) -> None:
         """Resets temporal tracking state for a new video sequence."""
         self.prev_gray = None
         self.prev_flow_mag = None
+        self.consecutive_frozen_frames = 0
 
     def analyze_frame(self, rgb_frame: np.ndarray) -> TemporalResult:
         """
@@ -97,6 +99,26 @@ class TemporalDetector:
         if var_mag > 15.0 and mean_mag < 3.0:
             anomaly_score = max(anomaly_score, 0.45)
 
+        # Check inter-frame sharpness volatility & differential flicker (deepfake splicing / morphing)
+        lap_prev = float(cv2.Laplacian(self.prev_gray, cv2.CV_64F).var())
+        lap_curr = float(cv2.Laplacian(small_gray, cv2.CV_64F).var())
+        sharpness_ratio = max(lap_prev, lap_curr) / (min(lap_prev, lap_curr) + 1.0)
+        frame_diff = float(np.mean(cv2.absdiff(self.prev_gray, small_gray)))
+
+        # 1. Shot / Splice cut discontinuity (sudden change in pixel content across frames)
+        if frame_diff > 40.0 or accel > 5.0:
+            anomaly_score = max(anomaly_score, min(1.0, 0.90 + (frame_diff - 40.0) * 0.005))
+        elif frame_diff > 20.0 or accel > 3.0:
+            anomaly_score = max(anomaly_score, min(1.0, 0.82 + (frame_diff - 20.0) * 0.01))
+        elif frame_diff > 12.0:
+            anomaly_score = max(anomaly_score, 0.45)
+
+        # 2. Sharpness volatility flicker (alternating deepfake frames)
+        if sharpness_ratio > 4.0 and frame_diff > 8.0:
+            anomaly_score = max(anomaly_score, 0.75)
+        elif sharpness_ratio > 3.0 and frame_diff > 6.0:
+            anomaly_score = max(anomaly_score, 0.55)
+
         self.prev_gray = small_gray
         self.prev_flow_mag = mean_mag
 
@@ -109,5 +131,7 @@ class TemporalDetector:
                 "mean_flow": round(mean_mag, 4),
                 "var_flow": round(var_mag, 4),
                 "acceleration": round(accel, 4),
+                "sharpness_ratio": round(sharpness_ratio, 2),
+                "frame_diff": round(frame_diff, 2),
             },
         )

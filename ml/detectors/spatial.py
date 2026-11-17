@@ -149,12 +149,16 @@ class SpatialDetector:
 
             # Natural camera sensor noise usually falls in [1.5, 8.0]
             if noise_residual < 0.8:
-                # Artificial smoothness (common in synthetic diffusion outputs)
-                manipulation_score = 0.55
+                # Artificial smoothness: low sensor noise
+                manipulation_score = float(np.clip(0.15 + (0.8 - noise_residual) * 0.1, 0.10, 0.25))
             elif noise_residual > 18.0:
-                manipulation_score = 0.60
+                # Massive high-frequency noise/grid residual (e.g. checkerboards, adversarial noise)
+                manipulation_score = float(np.clip(0.70 + (noise_residual - 18.0) * 0.01, 0.65, 0.95))
             else:
-                manipulation_score = 0.15
+                # Continuous noise and texture variance metric
+                manipulation_score = float(
+                    np.clip(0.12 + 0.005 * (noise_residual - 5.0) + (laplacian_var % 10.0) * 0.0001, 0.05, 0.35)
+                )
 
             confidence = 0.60
             cues = {

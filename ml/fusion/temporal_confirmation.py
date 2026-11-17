@@ -89,22 +89,23 @@ class TemporalConfirmationEngine:
                         reason = "Still image high manipulation but elevated uncertainty; routed to review."
 
                 else:
-                    # Multi-frame video: check temporal neighbors
-                    # Check window of +/- 2 frames around current frame
-                    start_w = max(0, i - 1)
-                    end_w = min(n, i + 2)
-                    neighbor_candidate_count = sum(
+                    # Multi-frame video: check temporal neighbors in a +/- 2 frame window
+                    start_w = max(0, i - 2)
+                    end_w = min(n, i + 3)
+                    window_candidate_count = sum(
                         1 for k in range(start_w, end_w) if candidate_labels[k] == "CANDIDATE_RED"
                     )
+                    total_candidate_red = candidate_labels.count("CANDIDATE_RED")
 
-                    # Exceptionally high score (>= 0.92) or neighbor agreement confirms RED
+                    # Exceptionally high score (>= 0.90), window neighbor agreement, or repeated multi-frame manipulation confirms RED
                     if (
-                        neighbor_candidate_count >= self.min_consecutive_red
-                        or f.manipulation_score >= 0.92
+                        window_candidate_count >= self.min_consecutive_red
+                        or total_candidate_red >= 3
+                        or f.manipulation_score >= 0.90
                     ):
                         final_color = "RED"
                         reason = (
-                            f"RED confirmed with temporal agreement ({neighbor_candidate_count} consecutive frames) "
+                            f"RED confirmed with temporal agreement ({window_candidate_count} frames in window, {total_candidate_red} total) "
                             f"at score {f.manipulation_score:.2f}."
                         )
                     else:

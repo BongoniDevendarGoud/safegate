@@ -38,25 +38,42 @@ class SensitiveContentClassifier:
         bgr = cv2.cvtColor(rgb_frame, cv2.COLOR_RGB2BGR)
         hsv = cv2.cvtColor(bgr, cv2.COLOR_BGR2HSV)
         ycrcb = cv2.cvtColor(bgr, cv2.COLOR_BGR2YCrCb)
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+
+        # Standard human skin locus in YCrCb: Cr in [133, 173], Cb in [77, 127]
+        lower_skin = np.array([0, 133, 77], dtype=np.uint8)
+        upper_skin = np.array([255, 173, 127], dtype=np.uint8)
+        skin_mask = cv2.inRange(ycrcb, lower_skin, upper_skin)
+        clean_skin_mask = cv2.morphologyEx(skin_mask, cv2.MORPH_OPEN, kernel)
 
         # ---------------------------------------------------------
         # 1. Blood & Violence Detection (Deep crimson / hemoglobin spectrum)
         # ---------------------------------------------------------
-        # Red hue wraps in HSV: [0, 10] and [170, 180]
-        # Real blood typically has high saturation (S >= 100) and medium/dark value (V between 40 and 220)
+        # Strict RGB hemoglobin check: high red, low green, low blue, high red-to-other ratio
+        r_chan = rgb_frame[:, :, 0].astype(np.float32)
+        g_chan = rgb_frame[:, :, 1].astype(np.float32)
+        b_chan = rgb_frame[:, :, 2].astype(np.float32)
+        rgb_blood_condition = (
+            (r_chan > 130.0)
+            & (g_chan < 75.0)
+            & (b_chan < 75.0)
+            & (r_chan / (g_chan + b_chan + 1.0) > 1.8)
+        )
+
+        # Combine with HSV deep crimson
         lower_red1 = np.array([0, 100, 40], dtype=np.uint8)
         upper_red1 = np.array([10, 255, 220], dtype=np.uint8)
-
         lower_red2 = np.array([170, 100, 40], dtype=np.uint8)
         upper_red2 = np.array([180, 255, 220], dtype=np.uint8)
+        hsv_mask = cv2.bitwise_or(
+            cv2.inRange(hsv, lower_red1, upper_red1),
+            cv2.inRange(hsv, lower_red2, upper_red2),
+        )
 
-        mask1 = cv2.inRange(hsv, lower_red1, upper_red1)
-        mask2 = cv2.inRange(hsv, lower_red2, upper_red2)
-        blood_mask = cv2.bitwise_or(mask1, mask2)
-
-        # Filter small noise grains via morphological opening
-        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
-        clean_blood_mask = cv2.morphologyEx(blood_mask, cv2.MORPH_OPEN, kernel)
+        # Pixel must match both RGB arterial ratio and HSV crimson, AND NOT be normal human skin
+        blood_candidates = (rgb_blood_condition.astype(np.uint8) * 255) & hsv_mask
+        blood_candidates = cv2.bitwise_and(blood_candidates, cv2.bitwise_not(clean_skin_mask))
+        clean_blood_mask = cv2.morphologyEx(blood_candidates, cv2.MORPH_OPEN, kernel)
 
         blood_pixel_count = float(cv2.countNonZero(clean_blood_mask))
         blood_ratio = blood_pixel_count / total_pixels
@@ -64,10 +81,10 @@ class SensitiveContentClassifier:
         # Blood score calibration:
         # > 1.5% concentrated crimson is notable, > 5% is substantial
         blood_score = 0.0
-        if blood_ratio > 0.06:
-            blood_score = min(1.0, 0.70 + (blood_ratio - 0.06) * 5.0)
+        if blood_ratio > 0.05:
+            blood_score = min(1.0, 0.70 + (blood_ratio - 0.05) * 5.0)
         elif blood_ratio > 0.015:
-            blood_score = 0.40 + (blood_ratio - 0.015) * 6.5
+            blood_score = 0.45 + (blood_ratio - 0.015) * 6.5
         elif blood_ratio > 0.005:
             blood_score = 0.20
 
@@ -76,24 +93,35 @@ class SensitiveContentClassifier:
         # ---------------------------------------------------------
         # 2. Skin / Nudity Area Detection (YCrCb color space)
         # ---------------------------------------------------------
-        # Standard human skin locus: Cr in [133, 173], Cb in [77, 127]
-        lower_skin = np.array([0, 133, 77], dtype=np.uint8)
-        upper_skin = np.array([255, 173, 127], dtype=np.uint8)
-
-        skin_mask = cv2.inRange(ycrcb, lower_skin, upper_skin)
-        clean_skin_mask = cv2.morphologyEx(skin_mask, cv2.MORPH_OPEN, kernel)
-
         skin_pixel_count = float(cv2.countNonZero(clean_skin_mask))
         skin_ratio = skin_pixel_count / total_pixels
 
-        # High contiguous skin ratio (>35%) indicates potential nudity
+        # Check if skin contour corresponds to a portrait face / speaking person
+        contours, _ = cv2.findContours(clean_skin_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        is_portrait_face = False
+        for c in contours:
+            area = float(cv2.contourArea(c))
+            if area > total_pixels * 0.15:
+                _, _, bw, bh = cv2.boundingRect(c)
+                aspect = float(bh) / float(bw)
+                if 0.45 <= aspect <= 2.5:
+                    is_portrait_face = True
+                    break
+
         nudity_score = 0.0
-        if skin_ratio > 0.50:
-            nudity_score = min(1.0, 0.65 + (skin_ratio - 0.50) * 1.5)
-        elif skin_ratio > 0.35:
-            nudity_score = 0.45
-        elif skin_ratio > 0.20:
-            nudity_score = 0.20
+        if not is_portrait_face:
+            if skin_ratio > 0.60:
+                nudity_score = min(1.0, 0.65 + (skin_ratio - 0.60) * 1.5)
+            elif skin_ratio > 0.45:
+                nudity_score = 0.45
+            elif skin_ratio > 0.30:
+                nudity_score = 0.20
+        else:
+            # For portrait faces/talking head videos, only trigger nudity if skin ratio is overwhelming (> 80%)
+            if skin_ratio > 0.85:
+                nudity_score = 0.60
+            elif skin_ratio > 0.78:
+                nudity_score = 0.45
 
         is_nudity_detected = nudity_score >= 0.50
 

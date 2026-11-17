@@ -77,7 +77,10 @@ class ScoreCalibrator:
         z_temp = _logit(s_temp) if w_temp > 0 else 0.0
 
         fused_logit = (w_spatial * z_spatial + w_freq * z_freq + w_temp * z_temp) / self.temperature
-        manipulation_score = float(np.clip(_sigmoid(fused_logit), 0.0, 1.0))
+        base_score = float(np.clip(_sigmoid(fused_logit), 0.0, 1.0))
+        # Security invariant: Acute manipulation detection on any individual branch must never be silenced by unexcited branches
+        max_branch_score = max(s_spatial, s_freq, s_temp if w_temp > 0 else 0.0)
+        manipulation_score = float(max(base_score, max_branch_score))
 
         # Epistemic uncertainty: variance across active detector branches
         active_scores = [s_spatial, s_freq]

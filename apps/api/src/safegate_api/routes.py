@@ -6,10 +6,11 @@ Implements intake, status polling, and audit verification.
 from __future__ import annotations
 
 import io
+import json
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Response, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -136,6 +137,7 @@ async def upload_media(
             "quarantine_key": quarantine_key,
         },
     )
+    await db.commit()
 
     logger.info(
         f"Media ingested successfully into quarantine: {upload_id} (SHA-256: {meta.sha256_hash[:12]}...)"
@@ -197,6 +199,7 @@ async def get_media_status(
             deepfake_score=f.deepfake_score,
             sensitive_score=f.sensitive_score,
             uncertainty_score=f.uncertainty_score,
+            cues=json.loads(f.cues_json) if getattr(f, "cues_json", None) else {},
         )
         for f in sorted(entry.frames, key=lambda x: x.frame_index)
     ]
@@ -218,6 +221,60 @@ async def get_media_status(
         created_at=entry.created_at.isoformat(),
         completed_at=entry.completed_at.isoformat() if entry.completed_at else None,
     )
+
+
+@router.get(
+    "/media/{upload_id}/frames/{frame_index}",
+    summary="Extract and stream an individual analyzed video/image frame as JPEG",
+)
+async def get_media_frame(
+    upload_id: str,
+    frame_index: int,
+    db: AsyncSession = Depends(get_db_session),
+) -> Response:
+    """
+    Extracts and streams a specific frame by index as JPEG.
+    Used for visual inspection of analyzed and flagged frames.
+    """
+    stmt = select(MediaUpload).where(MediaUpload.id == upload_id)
+    result = await db.execute(stmt)
+    entry = result.scalar_one_or_none()
+
+    if entry is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Media upload '{upload_id}' not found.",
+        )
+
+    file_path = storage_client.get_asset_path(entry.quarantine_key)
+    if not file_path or not file_path.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Media asset file for upload '{upload_id}' not found.",
+        )
+
+    import cv2
+
+    if not entry.is_video:
+        img = cv2.imread(str(file_path))
+        if img is None:
+            raise HTTPException(status_code=400, detail="Cannot decode image.")
+        ret, buf = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 85])
+        return Response(content=buf.tobytes(), media_type="image/jpeg", headers={"Cache-Control": "public, max-age=86400"})
+
+    cap = cv2.VideoCapture(str(file_path))
+    if not cap.isOpened():
+        raise HTTPException(status_code=500, detail="Cannot open video for frame extraction.")
+
+    try:
+        cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
+        ret, frame = cap.read()
+        if not ret or frame is None:
+            raise HTTPException(status_code=404, detail=f"Frame index {frame_index} out of bounds.")
+        ret, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
+        return Response(content=buf.tobytes(), media_type="image/jpeg", headers={"Cache-Control": "public, max-age=86400"})
+    finally:
+        cap.release()
 
 
 @router.get(

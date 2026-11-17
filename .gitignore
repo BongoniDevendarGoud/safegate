@@ -31,6 +31,10 @@ reports/
 *.db
 *.sqlite
 *.sqlite3
+*.db-shm
+*.db-wal
+cloudflared.exe
+user_frames/
 
 # Test & Coverage Artifacts
 .pytest_cache/

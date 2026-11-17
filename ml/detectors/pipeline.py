@@ -121,20 +121,21 @@ class MultiBranchPipeline:
                     )
                 t_freq = torch.tensor(radial_bins[np.newaxis, ...], dtype=torch.float32)
 
-                neural_prob = self.neural_model.predict_probability(t_img, t_freq)
-                effective_score = float(neural_prob)
+                neural_prob = float(self.neural_model.predict_probability(t_img, t_freq))
+                effective_spatial = float(max(spatial_res.manipulation_score, neural_prob))
+                effective_freq = float(max(freq_res.manipulation_score, neural_prob))
                 if freq_res.grid_artifact_detected:
-                    effective_score = float(max(neural_prob, freq_res.manipulation_score))
+                    effective_freq = float(max(effective_freq, freq_res.manipulation_score))
 
                 spatial_res = SpatialResult(
-                    manipulation_score=effective_score,
+                    manipulation_score=effective_spatial,
                     confidence=0.95,
                     face_detected=spatial_res.face_detected,
                     face_count=spatial_res.face_count,
                     cues={**spatial_res.cues, "neural_prob": round(neural_prob, 4), "model_inference": True},
                 )
                 freq_res = FrequencyResult(
-                    manipulation_score=effective_score,
+                    manipulation_score=effective_freq,
                     spectral_falloff_slope=freq_res.spectral_falloff_slope,
                     high_freq_ratio=freq_res.high_freq_ratio,
                     grid_artifact_detected=freq_res.grid_artifact_detected,
