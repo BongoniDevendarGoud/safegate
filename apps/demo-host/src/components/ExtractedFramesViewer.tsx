@@ -83,6 +83,10 @@ export const ExtractedFramesViewer: React.FC<ExtractedFramesViewerProps> = ({
   };
 
   const getFrameImageUrl = (frameIndex: number) => {
+    const f = frames.find((x) => x.frame_index === frameIndex);
+    if (f && (f as any).thumbnailUrl) {
+      return (f as any).thumbnailUrl;
+    }
     if (uploadId) {
       return `/v1/media/${uploadId}/frames/${frameIndex}`;
     }
@@ -477,7 +481,7 @@ export const ExtractedFramesViewer: React.FC<ExtractedFramesViewerProps> = ({
                 position: "relative",
               }}
             >
-              {uploadId ? (
+              {getFrameImageUrl(selectedFrame.frame_index) ? (
                 <img
                   src={getFrameImageUrl(selectedFrame.frame_index)}
                   alt={`Frame #${selectedFrame.frame_index}`}
